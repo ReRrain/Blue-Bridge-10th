@@ -1,0 +1,8 @@
+"..\out\i2c.obj",
+"..\out\key.obj",
+"..\out\led.obj",
+"..\out\main.obj",
+"..\out\pcf8591.obj",
+"..\out\test.obj" 
+TO "..\out\第十届蓝桥" 
+PRINT("..\out\第十届蓝桥.m51") RAMSIZE(256) 

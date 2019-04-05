@@ -1,0 +1,234 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              04/05/2019 18:23:04 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT
+                    -(..\out\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "key.h"
+   4          #include "pcf8591.h"
+   5          #include "test.h"
+   6          
+   7          u8 T1RH;
+   8          u8 T1RL;
+   9          u8 flag1s = 0;
+  10          u16 val = 0;
+  11          u32 cnt = 0;//记录脉冲个数
+  12          u32 cntBuf = 0;//记录脉冲个数
+  13          u8 flag200ms = 0;
+  14          u8 flagDAC = 0;//0-初始状态，1-RB2
+  15          u8 flagmode = 0;//0-电压测量，1-频率测量
+  16          u8 flagLED = 0;//0-LED模式，1-关闭
+  17          u8 flagShow = 0;//0-数码管显示，1-不显示
+  18          u8 flag200ms1 = 0;//200ms刷新一次灯的状态
+  19          
+  20          void CloseOther();
+  21          void ConfigTimer1(u16 ms);
+  22          void ConfigTimer0();
+  23          void RefreshVal();
+  24          void SetDAC();
+  25          
+  26          void main()
+  27          {
+  28   1              u8 i;
+  29   1              CloseOther();
+  30   1              ConfigTimer1(1);
+  31   1              ConfigTimer0();
+  32   1              
+  33   1              EA = 1;
+  34   1              while(1)
+  35   1              {
+  36   2                      KeyDriver();
+  37   2                      
+  38   2                      if(flagShow == 0)
+  39   2                      {
+  40   3                              if(flagmode == 0)
+  41   3                              {
+  42   4                                      if(flag200ms)
+  43   4                                      {
+  44   5                                              flag200ms = 0;
+  45   5                                              
+  46   5                                              ValTest();
+  47   5                                              LedBuff[7] = 0xFF;
+  48   5                                              
+  49   5                                              RefreshVal();
+  50   5                                              SetDAC();
+  51   5                                      }
+  52   4                              }
+  53   3                              else if(flagmode == 1)
+  54   3                              {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/05/2019 18:23:04 PAGE 2   
+
+  55   4                                      if(flag200ms1)
+  56   4                                      {
+  57   5                                              flag200ms1 = 0;
+  58   5                                              FrTest();
+  59   5                                      }
+  60   4                                      if(flag1s)
+  61   4                                      {
+  62   5                                              flag1s = 0;
+  63   5                                              cntBuf = cnt;
+  64   5                                              ShowNumber(cntBuf);
+  65   5                                              LedBuff[7] &= LedChar[15];
+  66   5                                              cnt = 0;
+  67   5                                      }
+  68   4                              }
+  69   3                      }
+  70   2                      else
+  71   2                      {
+  72   3                              for(i = 0; i< 8; i++)
+  73   3                              {
+  74   4                                      LedBuff[i] = 0xFF;
+  75   4                              }
+  76   3                      }
+  77   2              }
+  78   1      }
+  79          
+  80          void CloseOther()
+  81          {
+  82   1              P2 = (P2 & 0x1F) | 0x80;
+  83   1              P0 = 0xFF;
+  84   1              P2 &= 0x1F;
+  85   1              
+  86   1              P2 = (P2 & 0x1F) | 0xA0;
+  87   1              P0 = 0xAF;
+  88   1              P2 &= 0x1F;
+  89   1      }
+  90          
+  91          void ConfigTimer0()
+  92          {
+  93   1              TH0 = 0xFF;
+  94   1              TL0 = 0xFF;
+  95   1              TMOD &= 0xF0;
+  96   1              TMOD |= 0x04;
+  97   1          ET0 = 1;
+  98   1              TR0 = 1;
+  99   1      }
+ 100          
+ 101          void ConfigTimer1(u16 ms)
+ 102          {
+ 103   1              u32 tmp;
+ 104   1              tmp = 12000000 / 12;
+ 105   1              tmp = (tmp * ms) / 1000;
+ 106   1              tmp = 65536 - tmp;
+ 107   1              T1RH = (u8)(tmp >> 8);
+ 108   1              T1RL = (u8)tmp;
+ 109   1              TMOD &= 0x0F;
+ 110   1              TMOD |= 0x10;
+ 111   1              TH1 = T1RH;
+ 112   1              TL1 = T1RL;
+ 113   1              ET1 = 1;
+ 114   1              TR1 = 1;
+ 115   1      }
+ 116          
+C51 COMPILER V9.52.0.0   MAIN                                                              04/05/2019 18:23:04 PAGE 3   
+
+ 117          void InterruptTimer1()interrupt 3
+ 118          {
+ 119   1              static u8 tmr200ms = 0;
+ 120   1              static u8 tmr200ms1 = 0;
+ 121   1              static u16 tmr1s = 0;
+ 122   1              TH1 = T1RH;
+ 123   1              TL1 = T1RL;
+ 124   1              LedScan();
+ 125   1              KeyScan();
+ 126   1              tmr1s++;
+ 127   1              tmr200ms1++;
+ 128   1              if(tmr200ms1 >= 200)
+ 129   1              {
+ 130   2                      tmr200ms1 = 0;
+ 131   2                      flag200ms1 = 1;
+ 132   2              }
+ 133   1              if(tmr1s >= 1000)
+ 134   1              {
+ 135   2                      tmr1s = 0;
+ 136   2                      flag1s = 1;
+ 137   2              }
+ 138   1              
+ 139   1              if(flagmode == 0)
+ 140   1              {
+ 141   2                      tmr200ms++;
+ 142   2                      if(tmr200ms >= 200)
+ 143   2                      {
+ 144   3                              tmr200ms = 0;
+ 145   3                              flag200ms = 1;
+ 146   3                      }
+ 147   2              }
+ 148   1      }
+ 149          
+ 150          void InterruptTimer0()interrupt 1
+ 151          {
+ 152   1              cnt++;
+ 153   1      }
+ 154          
+ 155          void KeyAction(u8 keycode)
+ 156          {
+ 157   1              if(keycode == '4')
+ 158   1              {
+ 159   2                      flagmode ^= 1;
+ 160   2              }
+ 161   1              else if(keycode == '3')
+ 162   1              {
+ 163   2                      flagDAC ^= 1;
+ 164   2              }
+ 165   1              else if(keycode == '2')
+ 166   1              {
+ 167   2                      flagLED ^= 1;
+ 168   2              }
+ 169   1              else if(keycode == '1')
+ 170   1              {
+ 171   2                      flagShow ^= 1;
+ 172   2              }
+ 173   1      }
+ 174          
+ 175          void RefreshVal()
+ 176          {
+ 177   1              u8 i;
+ 178   1              val = GetADCValue(3);
+C51 COMPILER V9.52.0.0   MAIN                                                              04/05/2019 18:23:04 PAGE 4   
+
+ 179   1              
+ 180   1              for(i = 6; i>2; i--)
+ 181   1              {
+ 182   2                      LedBuff[i] = 0xFF;
+ 183   2              }
+ 184   1              
+ 185   1              LedBuff[7] &= 0xC1;
+ 186   1              LedBuff[0] = LedChar[val % 10];
+ 187   1              LedBuff[1] = LedChar[(val / 10) % 10];
+ 188   1              LedBuff[2] = LedChar[(val / 100) % 10];
+ 189   1              LedBuff[2] &= 0x7F;
+ 190   1      }
+ 191          
+ 192          void SetDAC()
+ 193          {
+ 194   1              u16 InitDAC = 200;//初始化DAC输出电压2v
+ 195   1              
+ 196   1              if(flagDAC == 0)//DAC输出是初始状态
+ 197   1              {
+ 198   2                      SetDACValue(InitDAC);
+ 199   2              }
+ 200   1              else//DAC输出随RB2改变
+ 201   1              {
+ 202   2                      SetDACValue(val);
+ 203   2              }
+ 204   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    815    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     23       5
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
