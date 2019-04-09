@@ -1,0 +1,8 @@
+"..\out\eeprom.obj",
+"..\out\i2.obj",
+"..\out\key.obj",
+"..\out\led.obj",
+"..\out\pcf8591.obj",
+"..\out\main.obj" 
+TO "..\out\²ÊµÆÄ£ÄâÆ÷" 
+PRINT("..\out\²ÊµÆÄ£ÄâÆ÷.m51") RAMSIZE(256) 

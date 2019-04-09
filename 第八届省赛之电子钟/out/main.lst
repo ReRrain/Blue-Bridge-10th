@@ -1,0 +1,462 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "key.h"
+   4          #include "ds18b02.h"
+   5          #include "ds1302.h"
+   6          
+   7          struct sTime setClockTime;
+   8          struct sTime setAlarmTime = {0, 0, 0, 0, 0, 0, 0};
+   9          
+  10          u8 T0RH;
+  11          u8 T0RL;
+  12          u8 flag200ms = 0;
+  13          u8 flag18b20 = 0;//0-时钟模式，1-温度显示
+  14          u8 flagmode = 0;//0-运行模式，1-时钟设置模式，2-闹钟设置模式
+  15          u8 numBlink = 1;//0-数码管灭，1-数码管亮
+  16          u8 ledSta = 0;//0-L1灭，1-L1亮
+  17          char index = 7;
+  18          u8 flaginter = 0;//0-得到实时时间，1-不得到实时时间
+  19          u8 flagstop =1;//0-Led闪烁，1-led停止闪烁
+  20          
+  21          void ConfigTimer0(u8 ms);
+  22          void CloseOther();
+  23          void RefreshTemp();
+  24          void RefreshTime(struct sTime *time);
+  25          void SetClockTimer();
+  26          void SetAlarmTimer();
+  27          void AddTime(struct sTime *time);
+  28          void SubTime(struct sTime *time);
+  29          void LedBlink();
+  30          
+  31          
+  32          void main()
+  33          {
+  34   1              CloseOther();
+  35   1              EA = 1;
+  36   1              ConfigTimer0(2);
+  37   1              Start18b02();
+  38   1              InitDS1302();//初始化DS1302
+  39   1          GetRealTime(&setClockTime);//相当于给setClockTime这个变量赋一个初值，
+  40   1                                        //否则在主函数中定义的变量，初始化相当于0，
+  41   1                                         //在子函数中的变量是垃圾值
+  42   1              while(1)
+  43   1              {
+  44   2                      KeyDriver();
+  45   2                  if(flag200ms == 1)
+  46   2                      {
+  47   3                              
+  48   3                              flag200ms = 0;
+  49   3                              
+  50   3                              if(flagmode == 0)
+  51   3                              {
+  52   4                                      if(((setClockTime.hour) == (setAlarmTime.hour)) &&((setClockTime.min) == (setAlarmTime.min)) && ((setC
+             -lockTime.sec) == (setAlarmTime.sec)))
+  53   4                                      {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 2   
+
+  54   5                                              flagstop = 0;
+  55   5                                      }
+  56   4                                      if(flag18b20 == 0)
+  57   4                                      {
+  58   5                                              GetRealTime(&setClockTime);
+  59   5                                              RefreshTime(&setClockTime);
+  60   5      
+  61   5                                      }
+  62   4                                      else
+  63   4                                      {
+  64   5                                              RefreshTemp();
+  65   5                                      }
+  66   4                                      if(flagstop == 0)
+  67   4                                      {
+  68   5                                              LedBlink();
+  69   5                                      }
+  70   4                                      else
+  71   4                                      {
+  72   5                                              P2 = (P2 & 0x1F) | 0x80;
+  73   5                                              P0 = 0xFF;
+  74   5                                              P2 &= 0x1F;
+  75   5                                      }
+  76   4                              } 
+  77   3                              else if(flagmode == 1)
+  78   3                              {
+  79   4                                      SetClockTimer();
+  80   4                              }
+  81   3                              else
+  82   3                              {
+  83   4                                      SetAlarmTimer();
+  84   4                              }
+  85   3                      }
+  86   2              }
+  87   1      }
+  88          
+  89          void ConfigTimer0(u8 ms)
+  90          {
+  91   1              u32 tmp;
+  92   1              
+  93   1              tmp = 11059200 / 12;
+  94   1              tmp = (tmp * ms) / 1000;
+  95   1              tmp = 65536 - tmp;
+  96   1              T0RH = (u8)(tmp >> 8);
+  97   1              T0RL = (u8)tmp;
+  98   1              TMOD &= 0xF0;
+  99   1              TMOD |= 0x01;
+ 100   1              TH0 = T0RH;
+ 101   1              TL0 = T0RL;
+ 102   1              ET0 = 1;
+ 103   1              TR0 = 1;
+ 104   1      } 
+ 105          
+ 106          void InterruptTimer0() interrupt 1
+ 107          {
+ 108   1              static u8 tmr200ms = 0;
+ 109   1              static u16 tmr1s = 0;
+ 110   1              static u16 tmr5s = 0;
+ 111   1              
+ 112   1              TH0 = T0RH;
+ 113   1              TL0 = T0RL;
+ 114   1              tmr200ms++;
+ 115   1              tmr1s++;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 3   
+
+ 116   1              
+ 117   1              KeyScan();
+ 118   1              LedScan();
+ 119   1              if(tmr200ms >= 100)
+ 120   1              {
+ 121   2                      flag200ms = 1;
+ 122   2                      tmr200ms = 0;
+ 123   2                      ledSta ^= 1;
+ 124   2              }
+ 125   1              if(tmr1s >= 500)
+ 126   1              {
+ 127   2                      tmr1s = 0;
+ 128   2                      numBlink ^= 1;
+ 129   2              }
+ 130   1              if(flagstop == 0)
+ 131   1              {
+ 132   2                      tmr5s++;
+ 133   2                      if(tmr5s >= 2500)
+ 134   2                      {
+ 135   3                              tmr5s = 0;
+ 136   3                              flagstop = 1;
+ 137   3                      }
+ 138   2              }
+ 139   1              else
+ 140   1              {
+ 141   2                      tmr5s = 0;
+ 142   2              }
+ 143   1      }
+ 144          
+ 145          void KeyAction(u8 keycode)
+ 146          {
+ 147   1              if(keycode == '1')
+ 148   1              {
+ 149   2                      if(flagmode == 0)
+ 150   2                      {
+ 151   3                              if(flagstop == 0)
+ 152   3                              {
+ 153   4                                      flagstop = 1;
+ 154   4                              }
+ 155   3                              else
+ 156   3                              {
+ 157   4                                      flagmode = 1;
+ 158   4                                      index = 7;
+ 159   4                                      flaginter = 0;
+ 160   4                              }
+ 161   3                      }
+ 162   2                      else if(flagmode == 1)
+ 163   2                      {
+ 164   3                              index -= 3;
+ 165   3                              if(index < 0)
+ 166   3                              {
+ 167   4                                      index = 7;
+ 168   4                                      flagmode = 0;
+ 169   4                              }
+ 170   3                              RefreshTime(&setClockTime);
+ 171   3                      }
+ 172   2              }
+ 173   1              else if(keycode == '2')
+ 174   1              {
+ 175   2                      if(flagmode == 0)
+ 176   2                      {
+ 177   3                              if(flagstop == 0)
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 4   
+
+ 178   3                              {
+ 179   4                                      flagstop = 1;
+ 180   4                              }
+ 181   3                              else
+ 182   3                              {
+ 183   4                                      flagmode = 2;
+ 184   4                                      index = 7;
+ 185   4                              }
+ 186   3                      }
+ 187   2                      else if(flagmode == 2)
+ 188   2                      {
+ 189   3                              index -= 3;
+ 190   3                              if(index < 0)
+ 191   3                              {
+ 192   4                                      flagmode = 0;
+ 193   4                                      index = 7;
+ 194   4                              }
+ 195   3                              RefreshTime(&setAlarmTime);                     
+ 196   3                      }
+ 197   2              }
+ 198   1          else if(keycode == '3')
+ 199   1              {
+ 200   2                      if(flagmode == 0)
+ 201   2                      {
+ 202   3                              if(flagstop == 0)
+ 203   3                              {
+ 204   4                                      flagstop = 1;
+ 205   4                              }
+ 206   3                      }
+ 207   2                      if(flagmode == 1)
+ 208   2                      {
+ 209   3                              AddTime(&setClockTime);
+ 210   3                              RefreshTime(&setClockTime);
+ 211   3                              SetRealTime(&setClockTime);
+ 212   3                      }
+ 213   2                      if(flagmode == 2)
+ 214   2                      {
+ 215   3                              AddTime(&setAlarmTime);
+ 216   3                              RefreshTime(&setAlarmTime);
+ 217   3                      }
+ 218   2              }               
+ 219   1              else if(keycode == '4')
+ 220   1              {
+ 221   2                      if(flagmode == 0)
+ 222   2                      {
+ 223   3                              if(flagstop == 0)
+ 224   3                              {
+ 225   4                                      flagstop = 1;
+ 226   4                              }
+ 227   3                              else
+ 228   3                              {       
+ 229   4                                      flag18b20 = 1;
+ 230   4                              }
+ 231   3                      }
+ 232   2                      if(flagmode == 1)
+ 233   2                      {
+ 234   3                              SubTime(&setClockTime);
+ 235   3                              RefreshTime(&setClockTime);
+ 236   3                              SetRealTime(&setClockTime);
+ 237   3                      }
+ 238   2                      if(flagmode == 2)
+ 239   2                      {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 5   
+
+ 240   3                              SubTime(&setAlarmTime);
+ 241   3                              RefreshTime(&setAlarmTime);
+ 242   3                      }
+ 243   2              }
+ 244   1      }
+ 245          
+ 246          void SetClockTimer()
+ 247          {
+ 248   1              if(flaginter == 0)
+ 249   1              {
+ 250   2                      GetRealTime(&setClockTime);
+ 251   2                      flaginter = 1;
+ 252   2              }
+ 253   1              if(numBlink == 0)
+ 254   1              {
+ 255   2                      LedBuff[index] = 0xFF;
+ 256   2                      LedBuff[index-1] = 0xFF;
+ 257   2              }
+ 258   1              else
+ 259   1              {
+ 260   2                       RefreshTime(&setClockTime);
+ 261   2              }
+ 262   1      }
+ 263          
+ 264          void SetAlarmTimer()
+ 265          {
+ 266   1              if(numBlink == 0)
+ 267   1              {
+ 268   2                      LedBuff[index] = 0xFF;
+ 269   2                      LedBuff[index-1] = 0xFF;
+ 270   2              }
+ 271   1              else
+ 272   1              {
+ 273   2                      RefreshTime(&setAlarmTime);
+ 274   2              }
+ 275   1      }
+ 276          
+ 277          void LedBlink()
+ 278          {
+ 279   1              if(ledSta)
+ 280   1              {
+ 281   2                      P2 = (P2 & 0x1F) | 0x80;
+ 282   2                      P0 = 0xFE;
+ 283   2                      P2 &= 0x1F;
+ 284   2              }
+ 285   1              else
+ 286   1              {
+ 287   2                      P2 = (P2 & 0x1F) | 0x80;
+ 288   2                      P0 = 0xFF;
+ 289   2                      P2 &= 0x1F;
+ 290   2              }
+ 291   1      }
+ 292                  
+ 293          void CloseOther()
+ 294          {
+ 295   1              P2 = (P2 & 0x1F) | 0x80;
+ 296   1              P0 = 0xFF;
+ 297   1              P2 &= 0x1F;
+ 298   1              
+ 299   1              P2 = (P2 & 0x1F) | 0xA0;
+ 300   1              P0 = 0xAF;
+ 301   1              P2 &= 0x1F;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 6   
+
+ 302   1      }
+ 303          
+ 304          void RefreshTemp()
+ 305          {
+ 306   1              int temp;
+ 307   1              u8 i;
+ 308   1              
+ 309   1              for(i = 7; i>=3; i--)
+ 310   1              {
+ 311   2                      LedBuff[i] = 0xFF;
+ 312   2              }
+ 313   1              Get18b02Temp(&temp);
+ 314   1              Start18b02();
+ 315   1              
+ 316   1              
+ 317   1              temp >>= 4;
+ 318   1              
+ 319   1              LedBuff[2] = LedChar[temp / 10];
+ 320   1              LedBuff[1] = LedChar[temp % 10];
+ 321   1              LedBuff[0] = LedChar[12];
+ 322   1      }
+ 323                  
+ 324          void ShowLedNumber(u8 index, u8 num)
+ 325          {
+ 326   1              if(num == 0xBF)//第2.5数码管的特殊处理
+ 327   1                      LedBuff[index] = 0xBF;
+ 328   1              else
+ 329   1                      LedBuff[index] = LedChar[num];
+ 330   1      }
+ 331          
+ 332          
+ 333          void RefreshTime(struct sTime *time)
+ 334          {
+ 335   1              ShowLedNumber(7, (time->hour)>>4);
+ 336   1              ShowLedNumber(6, (time->hour)&0x0F);
+ 337   1              ShowLedNumber(5, 0xBF);
+ 338   1              ShowLedNumber(4, (time->min)>>4);
+ 339   1              ShowLedNumber(3, (time->min)&0x0F);
+ 340   1              ShowLedNumber(2, 0xBF);
+ 341   1              ShowLedNumber(1, (time->sec)>>4);
+ 342   1              ShowLedNumber(0, (time->sec)&0x0F);
+ 343   1      }       
+ 344          
+ 345          void AddTime(struct sTime *time)
+ 346          {
+ 347   1              if(index == 7)
+ 348   1              {
+ 349   2                      time->hour += 0x01;
+ 350   2                      if(((time->hour) & 0x0F) == 0x0A)
+ 351   2                      {
+ 352   3                              (time->hour) = ((time->hour) & 0xF0) + 0x10;
+ 353   3                      }
+ 354   2                      if((time->hour) == 0x24)
+ 355   2                      {
+ 356   3                              time->hour = 0x00;
+ 357   3                      }
+ 358   2              }
+ 359   1              else if(index == 4)
+ 360   1              {
+ 361   2                      time->min += 0x01;
+ 362   2                      if(((time->min) & 0x0F) == 0x0A)
+ 363   2                      {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 7   
+
+ 364   3                              (time->min) = ((time->min) & 0xF0) + 0x10;
+ 365   3                      }
+ 366   2                      if((time->min) == 0x60)
+ 367   2                      {
+ 368   3                              time->min = 0x00;
+ 369   3                      }
+ 370   2              }
+ 371   1              else
+ 372   1              {
+ 373   2                      time->sec += 0x01;
+ 374   2                      if(((time->sec) & 0x0F) == 0x0A)
+ 375   2                      {
+ 376   3                              (time->sec) = ((time->sec) & 0xF0) + 0x10;
+ 377   3                      }
+ 378   2                      if((time->sec) == 0x60)
+ 379   2                      {
+ 380   3                              time->sec = 0x00;
+ 381   3                      }
+ 382   2              }
+ 383   1      }
+ 384          
+ 385          void SubTime(struct sTime *time)
+ 386          {
+ 387   1              if(index == 7)
+ 388   1              {
+ 389   2                      time->hour -= 0x01;
+ 390   2                      if(((time->hour) & 0x0F) == 0x0F)
+ 391   2                      {
+ 392   3                              time->hour = ((time->hour) & 0xF0) + 0x09;
+ 393   3                      }
+ 394   2                  if(time->hour == 0xF9)
+ 395   2                      {
+ 396   3                              time->hour = 0x23;
+ 397   3                      }
+ 398   2              }
+ 399   1              else if(index == 4)
+ 400   1              {
+ 401   2                      time->min -= 0x01;
+ 402   2                      if(((time->min) & 0x0F) == 0x0F)
+ 403   2                      {
+ 404   3                              time->min = ((time->min) & 0xF0) + 0x09;
+ 405   3                      }
+ 406   2                  if(time->min == 0xF9)
+ 407   2                      {
+ 408   3                              time->min = 0x59;
+ 409   3                      }
+ 410   2              }
+ 411   1              else
+ 412   1              {
+ 413   2                      time->sec -= 0x01;
+ 414   2                      if(((time->sec) & 0x0F) == 0x0F)
+ 415   2                      {
+ 416   3                              time->sec = ((time->sec) & 0xF0) + 0x09;
+ 417   3                      }
+ 418   2                      if(time->sec == 0xF9)
+ 419   2                      {
+ 420   3                              time->sec = 0x59;
+ 421   3                      }
+ 422   2              }
+ 423   1      }
+
+
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:07:46 PAGE 8   
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1267    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     31       7
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,163 @@
+C51 COMPILER V9.52.0.0   I2                                                                04/09/2019 18:03:49 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE I2
+OBJECT MODULE PLACED IN ..\out\i2.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\i2.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\i2.lst) OBJECT(..\
+                    -out\i2.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include <intrins.h>
+   3          
+   4          #define I2CDelay() Delay5us()
+   5          
+   6          void Delay5us()         //@11.0592MHz
+   7          {
+   8   1              unsigned char i;
+   9   1      
+  10   1              _nop_();
+  11   1              i = 11;
+  12   1              while (--i);
+  13   1      }
+  14          
+  15          
+  16          
+  17          void I2CStart()
+  18          {
+  19   1              I2C_SCL = 1;
+  20   1              I2C_SDA = 1;
+  21   1              I2CDelay();
+  22   1              I2C_SDA = 0;
+  23   1              I2CDelay();
+  24   1              I2C_SCL = 0;
+  25   1              I2CDelay();
+  26   1      }
+  27          
+  28          void I2CStop()
+  29          {
+  30   1              I2C_SCL = 0;
+  31   1              I2C_SDA = 0;
+  32   1              I2CDelay();
+  33   1              I2C_SCL = 1;
+  34   1              I2CDelay();
+  35   1              I2C_SDA = 1;
+  36   1              I2CDelay();
+  37   1      //      I2C_SCL = 0;//停止后scl不必再置0
+  38   1      }
+  39          
+  40          bit I2CWrite(u8 dat)//注意这里函数有返回值，故不能定义为void形式
+  41          {
+  42   1              bit ack;
+  43   1              u8 mask;
+  44   1              
+  45   1              for(mask = 0x80; mask != 0x00; mask >>= 1)
+  46   1              {
+  47   2                      if((mask & dat) == 0)//运算符优先级的问题！！！！！
+  48   2                              I2C_SDA = 0;
+  49   2                      else
+  50   2                              I2C_SDA = 1;
+  51   2                      I2CDelay();
+  52   2                      I2C_SCL = 1;
+  53   2                      I2CDelay();
+  54   2                      I2C_SCL = 0;
+C51 COMPILER V9.52.0.0   I2                                                                04/09/2019 18:03:49 PAGE 2   
+
+  55   2                      I2CDelay();
+  56   2              }
+  57   1              I2C_SDA = 1;
+  58   1              I2CDelay();
+  59   1              I2C_SCL = 1;
+  60   1              ack = I2C_SDA;
+  61   1              I2CDelay();
+  62   1              I2C_SCL= 0;
+  63   1              I2CDelay();
+  64   1              
+  65   1              return(~ack);
+  66   1      }
+  67          
+  68          u8 I2CReadACK()
+  69          {
+  70   1              u8 mask;
+  71   1              u8 dat;
+  72   1              
+  73   1              I2C_SDA = 1;//只有在sda为高电平时主机才能进行读操作
+  74   1              I2CDelay();//这里不要忘记加延时函数
+  75   1              
+  76   1              for(mask = 0x80; mask != 0x00; mask >>= 1)
+  77   1              {
+  78   2                      I2C_SCL = 1;//scl在高电平期间才能读
+  79   2                      I2CDelay();
+  80   2                      
+  81   2                      if(I2C_SDA == 0)
+  82   2                              dat &= ~mask;
+  83   2                      else
+  84   2                              dat |= mask;
+  85   2                  I2CDelay();
+  86   2                      I2C_SCL = 0;//拉低scl，使从机发送出下一位
+  87   2                      I2CDelay();
+  88   2              }
+  89   1              I2C_SDA = 0;                                                                               
+  90   1              I2CDelay();
+  91   1              I2C_SCL = 1;
+  92   1              I2CDelay();
+  93   1              I2C_SCL = 0;
+  94   1              I2CDelay();
+  95   1              
+  96   1              return dat;
+  97   1      }
+  98          
+  99          u8 I2CReadNACK()
+ 100          {
+ 101   1              u8 mask;
+ 102   1              u8 dat;
+ 103   1              
+ 104   1              I2C_SDA = 1;
+ 105   1              I2CDelay();//这里不要忘记加延时函数
+ 106   1              
+ 107   1              for(mask = 0x80; mask != 0x00; mask >>= 1)
+ 108   1              {
+ 109   2                      I2C_SCL = 1;//scl在高电平期间才能读
+ 110   2                      I2CDelay();
+ 111   2                      
+ 112   2                      if(I2C_SDA == 0)
+ 113   2                              dat &= ~mask;
+ 114   2                      else
+ 115   2                              dat |= mask;
+ 116   2                  I2CDelay();
+C51 COMPILER V9.52.0.0   I2                                                                04/09/2019 18:03:49 PAGE 3   
+
+ 117   2                      I2C_SCL = 0;
+ 118   2                      I2CDelay();
+ 119   2              }
+ 120   1              I2C_SDA = 1;
+ 121   1              I2CDelay();
+ 122   1              I2C_SCL = 1;
+ 123   1              I2CDelay();
+ 124   1              I2C_SCL = 0;
+ 125   1              I2CDelay();
+ 126   1              
+ 127   1              return dat;
+ 128   1      }
+ 129                  
+ 130          
+ 131                  
+ 132          
+ 133                  
+ 134          
+ 135          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    179    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

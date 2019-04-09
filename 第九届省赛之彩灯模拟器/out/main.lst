@@ -1,0 +1,608 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT
+                    -(..\out\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "eeprom.h"
+   3          #include "key.h"
+   4          #include "led.h"
+   5          #include "i2.h"
+   6          #include "pcf8591.h"
+   7          
+   8          u8 T0RH;
+   9          u8 T0RL;
+  10          u8 flag200ms = 0;
+  11          u8 hightime = 0;//´æ´¢¸ßµçÆ½³ÖÐøµÄÊ±¼ä
+  12          u16 PWMSTA = 0xFF;//ÕâÀï×¢ÒâÒª¸øPWMSTA¸³³õÖµÎª0xFF£¬
+  13          //ÎÒÃÇÊÇÓÃPWMSTA´æ´¢P0¿ÚµÄ×´Ì¬µÄ£¬ÉÏµçµÄÊ±ºòÈ·±£µÆÊÇ¹Ø±Õ×´Ì¬
+  14          
+  15          u8 flagled1 = 0;
+  16          u8 flagled2 = 0;
+  17          u8 flagled3 = 0;
+  18          u8 flagled4 = 0;
+  19          u8 flagstart = 0;//0-Í£Ö¹LEDÁ÷×ª£¬1-¿ªÊ¼LEDÁ÷×ª
+  20          u8 flagset = 0;//1-ÉèÖÃÄ£Ê½£¬0-·ÇÉèÖÃÄ£Ê½
+  21          u8 runmode = 1;//ÔËÐÐÄ£Ê½±àºÅ
+  22          u16 runtime[4] = {400, 400, 400, 400};//ËÄ¸öÄ£Ê½ÏÂµÄÉÁË¸¼ä¸ôÊ±¼ä£¨ÀàÐÍ´íÎó£©
+  23          u8 brightness = 0;//ÁÁ¶ÈµÈ¼¶
+  24          u8 numBlinkSta = 1;//0-ÊýÂë¹ÜÃð£¬1-ÊýÂë¹ÜÁÁ
+  25          u8 SetMode = 0;//0-ÉÁË¸LEDµÄÄ£Ê½£¬1-ÉÁË¸Á÷×ª¼ä¸ô
+  26          
+  27          void CloseOther();
+  28          void ConfigTimer0(u16 ms);//¶¨Ê±
+  29          void ConfigTimer1();//¶¨Ê±
+  30          void LedMode1();
+  31          void LedMode2();
+  32          void LedMode3();
+  33          void LedMode4();
+  34          void SetTime();
+  35          void AddTime();
+  36          void SubTime();
+  37          u8 AdjustDC();//ÅÐ¶Ï¸ßµçÆ½µÄÊ±¼ä
+  38          
+  39          void main()
+  40          {
+  41   1              u8 i;
+  42   1              u8 runtimebuff[4];
+  43   1              
+  44   1              E2Read(runtimebuff, 0x00, 4);//Ò»¸ö×Ö½ÚÊÇ1¸öu8£¬E2PromµÄµØÖ··¶Î§ÊÇ0x00µ½0xFF£¨Êý×éµÄÃû×Ö¾ÍÊÇµØÖ·£¬²»ÐèÒªÔ
+             -ÙÈ¡µØÖ··û£©
+  45   1              for(i = 0;i <4; i++)
+  46   1              {
+  47   2                  runtime[i] = runtimebuff[i] * 10;
+  48   2              }
+  49   1               
+  50   1              EA = 1;
+  51   1              CloseOther();
+  52   1              ConfigTimer0(2);
+  53   1              ConfigTimer1();
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 2   
+
+  54   1              
+  55   1              while(1)
+  56   1              {
+  57   2                      KeyDriver();
+  58   2                      if(flag200ms)
+  59   2                      {
+  60   3                              flag200ms = 0;
+  61   3                              hightime = AdjustDC();
+  62   3                      }
+  63   2                      if(flagstart)
+  64   2                      {
+  65   3                              P2 = (P2 & 0x1F) | 0x80;
+  66   3                              if(flagled1)
+  67   3                              {
+  68   4                                      flagled1 = 0;
+  69   4                                      LedMode1();
+  70   4                              }
+  71   3                              if(flagled2)
+  72   3                              {
+  73   4                                      flagled2 = 0;
+  74   4                                      LedMode2();
+  75   4                              }
+  76   3                              if(flagled3)
+  77   3                              {
+  78   4                                      flagled3 = 0;
+  79   4                                      LedMode3();
+  80   4                              }
+  81   3                              if(flagled4)
+  82   3                              {
+  83   4                                      flagled4 = 0;
+  84   4                                      LedMode4();
+  85   4                              }
+  86   3                              P2 &= 0x1F;
+  87   3                      }
+  88   2                      else if(flagstart == 0)
+  89   2                      {
+  90   3                              P2 = (P2 & 0x1F) | 0x80;
+  91   3                              P0 = 0xFF;
+  92   3                              P2 &= 0x1F;
+  93   3                      }
+  94   2                      if(flagset)
+  95   2                      {
+  96   3                              SetTime();
+  97   3                              flagstart = 0;
+  98   3                      }
+  99   2                      else
+ 100   2                      {
+ 101   3                              for(i = 0; i<8; i++)
+ 102   3                              {
+ 103   4                                      LedBuff[i] = 0xFF;
+ 104   4                              }
+ 105   3                      }
+ 106   2          }
+ 107   1      }
+ 108          
+ 109          void LedMode1()
+ 110          {
+ 111   1              static u8 shift1 = 0x01;//L1-L8
+ 112   1              P0 = ~shift1;
+ 113   1              PWMSTA = ~shift1;//²»ÒªÖ±½Ó²Ù×÷P0¿Ú£¡£¡£¡£¡
+ 114   1              
+ 115   1              shift1 <<= 1;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 3   
+
+ 116   1              
+ 117   1              if(shift1 == 0x00)
+ 118   1              {
+ 119   2                      runmode = 2;
+ 120   2                      shift1 = 0x01;
+ 121   2              }
+ 122   1      }
+ 123          
+ 124          void LedMode2()
+ 125          {
+ 126   1              static u8 shift2 = 0x80;//L1-L8
+ 127   1              P0 = ~shift2;
+ 128   1              PWMSTA = ~shift2;
+ 129   1              
+ 130   1              shift2 >>= 1;
+ 131   1              P2 &= 0x1F;
+ 132   1              if(shift2 == 0x00)
+ 133   1              {
+ 134   2                      runmode = 3;
+ 135   2                      shift2 = 0x80;
+ 136   2              }
+ 137   1      }
+ 138          
+ 139          void LedMode3()
+ 140          {
+ 141   1              static u8 index = 1;
+ 142   1              if(index == 1)
+ 143   1              {
+ 144   2                      P0 = 0x7E;
+ 145   2                      PWMSTA = 0x7E;
+ 146   2                      index+=1;
+ 147   2              }
+ 148   1              else if(index == 2)
+ 149   1              {
+ 150   2                      P0 = 0xBD;
+ 151   2                      PWMSTA = 0xBD;
+ 152   2                      index += 1;
+ 153   2              }
+ 154   1              else if(index == 3)
+ 155   1              {
+ 156   2                      P0 = 0xDB;
+ 157   2                      PWMSTA = 0xDB;
+ 158   2                      index += 1;
+ 159   2      
+ 160   2              }
+ 161   1              else if(index == 4)
+ 162   1              {
+ 163   2                      P0 = 0xE7;
+ 164   2                      PWMSTA = 0xE7;
+ 165   2                      index = 1;
+ 166   2                      runmode = 4;
+ 167   2              }
+ 168   1      }
+ 169          
+ 170          void LedMode4()
+ 171          {
+ 172   1              static u8 index = 1;
+ 173   1              if(index == 1)
+ 174   1              {
+ 175   2                      P0 = 0xE7;
+ 176   2                      PWMSTA = 0xE7;
+ 177   2                      index+=1;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 4   
+
+ 178   2              }
+ 179   1              else if(index == 2)
+ 180   1              {
+ 181   2                      P0 = 0xDB;
+ 182   2                      PWMSTA = 0xDB;
+ 183   2                      index += 1;
+ 184   2              }
+ 185   1              else if(index == 3)
+ 186   1              {
+ 187   2                      P0 = 0xBD;
+ 188   2                      PWMSTA = 0xBD;
+ 189   2                      index += 1;
+ 190   2              }
+ 191   1              else if(index == 4)
+ 192   1              {
+ 193   2                      P0 = 0x7E;
+ 194   2                      PWMSTA = 0x7E;
+ 195   2                      index = 1;
+ 196   2                      runmode = 1;
+ 197   2              }
+ 198   1      }
+ 199          
+ 200          void ConfigTimer0(u16 ms)
+ 201          {
+ 202   1              u32 tmp;
+ 203   1              
+ 204   1              tmp = 11059200 / 12;
+ 205   1              tmp = (tmp *ms) / 1000;
+ 206   1              tmp = 65536 - tmp;
+ 207   1              T0RH = (u8)(tmp >> 8);
+ 208   1              T0RL = (u8)tmp;
+ 209   1              TMOD &= 0xF0;
+ 210   1              TMOD |= 0x01;
+ 211   1              TH0 = T0RH;
+ 212   1              TL0 = T0RL;
+ 213   1              ET0 = 1;
+ 214   1              TR0 = 1;
+ 215   1      }
+ 216          
+ 217          void ConfigTimer1()//Èí¼þÉú³ÉµÄ10us¶¨Ê±Æ÷£¨Ã¿10us½øÒ»´ÎÖÐ¶Ï£©
+ 218          {
+ 219   1              AUXR &= 0xBF;           //¶¨Ê±Æ÷Ê±ÖÓ12TÄ£Ê½
+ 220   1              TMOD &= 0x0F;           //ÉèÖÃ¶¨Ê±Æ÷Ä£Ê½
+ 221   1              TMOD |= 0x10;           //ÉèÖÃ¶¨Ê±Æ÷Ä£Ê½
+ 222   1              TL1 = 0xF7;             //ÉèÖÃ¶¨Ê±³õÖµ
+ 223   1              TH1 = 0xFF;             //ÉèÖÃ¶¨Ê±³õÖµ
+ 224   1              TF1 = 0;                //Çå³ýTF1±êÖ¾
+ 225   1              TR1 = 1;                //¶¨Ê±Æ÷1¿ªÊ¼¼ÆÊ±
+ 226   1              ET1 = 1;//×¢ÒâÕâÀïÈí¼þÉú³ÉµÄº¯ÊýÀïÊÇÃ»ÓÐÕâÌõÓï¾äµÄ£¬Òª×Ô¼º¼ÓÉÏ£¡£¡£¡£¡
+ 227   1      }
+ 228          
+ 229          void InterruptTimer0()interrupt 1
+ 230          {
+ 231   1              static u16 tmr1 = 0;
+ 232   1              static u16 tmr2 = 0;
+ 233   1              static u16 tmr3 = 0;
+ 234   1              static u16 tmr4 = 0;
+ 235   1              static u16 tmr800ms = 0;
+ 236   1              static u8 tmr200ms = 0;
+ 237   1              
+ 238   1              TH0 = T0RH;
+ 239   1              TL0 = T0RL;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 5   
+
+ 240   1              tmr200ms++;
+ 241   1              KeyScan();
+ 242   1              LedScan();
+ 243   1              
+ 244   1              if(runmode == 1)
+ 245   1              {
+ 246   2                      tmr1++;
+ 247   2                      if(tmr1 >= (runtime[0] / 2))
+ 248   2                      {
+ 249   3                              tmr1 = 0;
+ 250   3                              flagled1 = 1;
+ 251   3                      }
+ 252   2              }
+ 253   1              
+ 254   1              if(runmode == 2)
+ 255   1              {
+ 256   2                      tmr2++;
+ 257   2                      if(tmr2 >= (runtime[1] / 2))
+ 258   2                      {
+ 259   3                              tmr2 = 0;
+ 260   3                              flagled2 = 1;
+ 261   3                      }
+ 262   2              }
+ 263   1              
+ 264   1              if(runmode == 3)
+ 265   1              {
+ 266   2                      tmr3++;
+ 267   2                      if(tmr3 >= (runtime[2] / 2))
+ 268   2                      {
+ 269   3                              tmr3 = 0;
+ 270   3                              flagled3 = 1;
+ 271   3                      }
+ 272   2              }
+ 273   1              
+ 274   1              if(runmode == 4)
+ 275   1              {
+ 276   2                      tmr4++;
+ 277   2                      if(tmr4 >= (runtime[3] / 2))
+ 278   2                      {
+ 279   3                              tmr4 = 0;
+ 280   3                              flagled4 = 1;
+ 281   3                      }
+ 282   2              }
+ 283   1              
+ 284   1              if(flagset)
+ 285   1              {
+ 286   2                      tmr800ms++;
+ 287   2                      if(tmr800ms >= 400)
+ 288   2                      {
+ 289   3                              tmr800ms = 0;
+ 290   3                              numBlinkSta ^= 1;
+ 291   3                      }
+ 292   2              }
+ 293   1              if(tmr200ms >= 100)
+ 294   1              {
+ 295   2                      tmr200ms = 0;
+ 296   2                      flag200ms = 1;
+ 297   2              }
+ 298   1      }
+ 299          
+ 300          void InterruptTimer1()interrupt 3
+ 301          {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 6   
+
+ 302   1              static u16 PWMCnt = 0;//´æ´¢½øÈëÖÐ¶ÏµÄ´ÎÊý
+ 303   1              
+ 304   1              TL1 = 0xF7;             //ÉèÖÃ¶¨Ê±³õÖµ
+ 305   1              TH1 = 0xFF;             //ÉèÖÃ¶¨Ê±³õÖµ
+ 306   1              PWMCnt++;
+ 307   1              PWMCnt %= 101;//666µÄ²Ù×÷£¬ÊµÏÖÂú100ÇåÁã£¬ÉèÖÃ×ÜÊ±¼äÎª1ms£¬¼´PWM²¨µÄÆµÂÊÎª1k£¨ÔÚ1msµÄÊ±¼äÀïÈÃÐ¡µÆÃðhighti
+             -meµÄÊ±¼ä£¬ÆäÓàÊ±¼äÊÇÁÁµÄ×´Ì¬£©
+ 308   1                            //ÕâÀï¾ÍÌåÏÖÁËÖ®Ç°µÄPWM²¨µÄË¼ÏëÁË£¬Ö»²»¹ýÖ®Ç°µÄÄÇ¸öÊÇ¸ü¸ß¼¶µÄ²Ù×÷£¬¾ÍÊÇÆµÂÊ¿Éµ÷
+ 309   1                            //ÕâÀïÎÒÃÇÊÇÖ±½ÓÏÞ¶¨ÁËÆµÂÊ        
+ 310   1              P2 = (P2 & 0x1F) | 0x80;
+ 311   1              if(PWMCnt >= hightime)//Èç¹û½øÈëÖÐ¶ÏÉ¨ÃèµÄÊ±¼ä´óÓÚµÈÓÚ¸ßµçÆ½³ÖÐøµÄÊ±¼ä
+ 312   1              {
+ 313   2                      P0 = PWMSTA;//µãÁÁ¶ÔÓ¦×´Ì¬ÏÂµÄled
+ 314   2              }
+ 315   1              else
+ 316   1              {
+ 317   2                      P0 = 0xFF;//·ñÔò¹Ø±ÕËùÓÐµÄÐ¡µÆ
+ 318   2              }
+ 319   1      
+ 320   1              P2 &= 0x1F;
+ 321   1      }
+ 322          //Ëµ°×ÁË£¬Ð¡µÆÁÁ¶ÈÊÇÔõÃ´µ÷µÄÄØ£¿¾ÍÊÇÔÚºÜ¶ÌµÄÊ±¼äÄÚ£¬²»¶ÏµØÈÃµÆ¿ªºÍ¹Ø£¬ÕâÑùÎÒÃÇÔÚÊÓ¾õÉÏ¿´ÆðÀ´£¬Ð¡µÆµÄÁÁ¶È¾Í
+             -ÊÇ·¢Éú±ä»¯µÄ
+ 323          u8 AdjustDC()//ÅÐ¶Ï¸ßµçÆ½µÄÊ±¼ä£¬ÊµÏÖµ÷½Úrb2£¬µÆµÄÁÁ¶È·¢Éú¸Ä±ä
+ 324          {
+ 325   1              u16 val;
+ 326   1      
+ 327   1              val = GetADCValue(3);
+ 328   1              if(val<60)
+ 329   1              {
+ 330   2                      hightime = 90;
+ 331   2                      brightness = 1;
+ 332   2              }
+ 333   1              else if(val <130)//ÕâÀï±ØÐë´óÓÚµÈÓÚ130£¨·ñÔò²»»áÏÔÊ¾Õâ¸öµÈ¼¶µÄÁÁ¶È£©
+ 334   1              {
+ 335   2                      hightime = 70;
+ 336   2                      brightness = 2;
+ 337   2              }
+ 338   1              else if(val <195)//ÕâÀï±ØÐë´óÓÚ190,emmÕâ¸öÊý¾ÝÊÇºóÆÚµ÷µÄÊ±ºò·¢ÏÖµÄ£¬²»Ì«¶®ÎªÉ¶
+ 339   1              {
+ 340   2                      hightime = 30;
+ 341   2                      brightness = 3;
+ 342   2              }
+ 343   1              else 
+ 344   1              {
+ 345   2                      hightime = 5;
+ 346   2                      brightness = 4;
+ 347   2              }
+ 348   1              return hightime;
+ 349   1      }
+ 350          
+ 351          void CloseOther()
+ 352          {
+ 353   1              P2 = (P2 & 0x1F) | 0x80;
+ 354   1              P0 = 0xFF;
+ 355   1              P2 &= 0x1F;
+ 356   1              
+ 357   1              P2 = (P2 & 0x1F) | 0xA0;
+ 358   1              P0 = 0xAF;
+ 359   1              P2 &= 0x1F;
+ 360   1      }
+ 361          
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 7   
+
+ 362          void KeyAction(u8 keycode)
+ 363          {
+ 364   1              u8 buff[4];//¶¨ÒåÒ»¸öÊý×éÓÃÀ´´æ´¢ËõÐ¡10±¶ºóµÄÁ÷×ª¼ä¸ô
+ 365   1              u8 i;
+ 366   1              if(keycode == '1')
+ 367   1              {
+ 368   2                      if(flagstart == 0)
+ 369   2                      {
+ 370   3                              flagstart = 1;
+ 371   3                      }
+ 372   2                      else if(flagstart == 1)
+ 373   2                      {
+ 374   3                              flagstart = 0;
+ 375   3                      }
+ 376   2              }
+ 377   1              else if(keycode  == '2')
+ 378   1              {
+ 379   2                      if(flagset == 0)
+ 380   2                      {
+ 381   3                              flagset = 1;
+ 382   3                              SetMode = 0;
+ 383   3                      }
+ 384   2                      else if(flagset == 1)
+ 385   2                      {
+ 386   3                              SetMode += 1;
+ 387   3                              if(SetMode > 1)
+ 388   3                              {
+ 389   4                                      flagset = 0;
+ 390   4                                      runmode = 1;
+ 391   4                              }
+ 392   3                      }
+ 393   2              }
+ 394   1              else if(keycode  == '3')
+ 395   1              {
+ 396   2                      AddTime();
+ 397   2                      for(i = 0; i<4; i++)
+ 398   2                      {
+ 399   3                              buff[i] = runtime[i] / 10;
+ 400   3                      }
+ 401   2                      E2Write(buff, 0x00, 4);//½«Êý×éÖÐµÄÖµÐ´ÈëE2PROM
+ 402   2                      //£¨×¢ÒâÕâ¸öÐ´·¨£©£¬Ð´ÈëµØÖ·´Ó0x00¿ªÊ¼£¬ÒòÎªÊÇ4¸ö×Ö½ÚµÄÊý¾Ý£¬ËùÒÔ×Ö½ÚÊýÐ´4
+ 403   2              }
+ 404   1              else if(keycode  == '4')
+ 405   1              {
+ 406   2                      SubTime();
+ 407   2                      for(i = 0; i<4; i++)
+ 408   2                      {
+ 409   3                              buff[i] = runtime[i] / 10;
+ 410   3                      }
+ 411   2                      E2Write(buff, 0x00, 4);
+ 412   2              }
+ 413   1      }
+ 414          
+ 415          void SetTime()
+ 416          {
+ 417   1              LedBuff[4] = 0xFF;//¹Ø±ÕµÚ5¸öÊýÂë¹Ü
+ 418   1              if(SetMode == 0)//ÉèÖÃLEDµÄÄ£Ê½
+ 419   1              {
+ 420   2                      if(numBlinkSta)
+ 421   2                      {
+ 422   3                              LedBuff[7] = 0xBF;//µÚ8¸öÊýÂë¹ÜÏÔÊ¾"-"
+ 423   3                              LedBuff[5] = 0xBF;//µÚ6¸öÊýÂë¹ÜÏÔÊ¾"-"
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 8   
+
+ 424   3                              LedBuff[6] = LedChar[runmode];//µÚ7¸öÊýÂë¹ÜÏÔÊ¾ÔËÐÐÄ£Ê½
+ 425   3                      }
+ 426   2                      else
+ 427   2                      {
+ 428   3                              LedBuff[7] = 0xFF;
+ 429   3                              LedBuff[5] = 0xFF;
+ 430   3                              LedBuff[6] = 0xFF;
+ 431   3                      }
+ 432   2                      LedBuff[0] = LedChar[runtime[runmode-1] % 10];
+ 433   2                      LedBuff[1] = LedChar[(runtime[runmode-1]/10) % 10];
+ 434   2                      LedBuff[2] = LedChar[(runtime[runmode-1]/100) % 10];
+ 435   2                      if(runtime[runmode-1] < 1000)
+ 436   2                      {
+ 437   3                              LedBuff[3] = 0xFF;
+ 438   3                      }
+ 439   2                      else
+ 440   2                      {
+ 441   3                              LedBuff[3] = LedChar[(runtime[runmode-1]/1000) % 10];
+ 442   3                      }
+ 443   2              }
+ 444   1              else if(SetMode == 1)//ÉèÖÃÁ÷×ª¼ä¸ô
+ 445   1              {
+ 446   2                      if(numBlinkSta)
+ 447   2                      {
+ 448   3                              LedBuff[0] = LedChar[runtime[runmode-1] % 10];
+ 449   3                              LedBuff[1] = LedChar[(runtime[runmode-1]/10) % 10];
+ 450   3                              LedBuff[2] = LedChar[(runtime[runmode-1]/100) % 10];
+ 451   3                              if(runtime[runmode-1] < 1000)
+ 452   3                              {
+ 453   4                                      LedBuff[3] = 0xFF;
+ 454   4                              }
+ 455   3                              else
+ 456   3                              {
+ 457   4                                      LedBuff[3] = LedChar[(runtime[runmode-1]/1000) % 10];
+ 458   4                              }
+ 459   3                      }
+ 460   2                      else
+ 461   2                      {
+ 462   3                              LedBuff[0] = 0xFF;
+ 463   3                              LedBuff[1] = 0xFF;
+ 464   3                              LedBuff[2] = 0xFF;
+ 465   3                              LedBuff[3] = 0xFF;
+ 466   3                      }
+ 467   2                      LedBuff[7] = 0xBF;
+ 468   2                      LedBuff[5] = 0xBF;
+ 469   2                      LedBuff[6] = LedChar[runmode];
+ 470   2              }
+ 471   1      }
+ 472          
+ 473          //void SetTime()//Õâ¸ö·½·¨»á³ö´í
+ 474          //{
+ 475          //      u8 i;
+ 476          //      if(SetMode == 0)
+ 477          //      {
+ 478          //              ShowNumber(runtime[runmode-1]);
+ 479          //              if(numBlinkSta)
+ 480          //              {
+ 481          //                      LedBuff[7] = 0xBF;
+ 482          //                      LedBuff[5] = 0xBF;
+ 483          //                      LedBuff[6] = LedChar[runmode];
+ 484          //              }
+ 485          //              else
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 9   
+
+ 486          //              {
+ 487          //                      LedBuff[7] = 0xFF;
+ 488          //                      LedBuff[6] = 0xFF;
+ 489          //                      LedBuff[5] = 0xFF;
+ 490          //              }
+ 491          //      }
+ 492          //      else if(SetMode == 1)
+ 493          //      {
+ 494          //              LedBuff[7] = 0xBF;
+ 495          //              LedBuff[5] = 0xBF;
+ 496          //              LedBuff[6] = LedChar[runmode];
+ 497          //              if(numBlinkSta)
+ 498          //              {
+ 499          //                      ShowNumber(runtime[runmode-1]);
+ 500          //              }
+ 501          //              else
+ 502          //              {
+ 503          //                      for(i = 0; i< 5;i++)
+ 504          //                      {
+ 505          //                              LedBuff[i] = 0xFF;
+ 506          //                      }
+ 507          //              }
+ 508          //      }
+ 509          //}     
+ 510          
+ 511          void AddTime()
+ 512          {
+ 513   1              u8 i;
+ 514   1              if(SetMode == 0)
+ 515   1              {
+ 516   2                      runmode+=1;
+ 517   2                      if(runmode >4)
+ 518   2                      {
+ 519   3                              runmode = 1;
+ 520   3                      }
+ 521   2              }
+ 522   1              else 
+ 523   1              {
+ 524   2                      for(i = 0; i<4; i++)
+ 525   2                      {
+ 526   3                              if(runmode == i+1)
+ 527   3                              {
+ 528   4                                      runtime[i] += 100;
+ 529   4                                      if(runtime[i] > 1200)
+ 530   4                                      {
+ 531   5                                              runtime[i] = 400;
+ 532   5                                      }
+ 533   4                              }
+ 534   3                      }
+ 535   2              }
+ 536   1      }
+ 537          
+ 538          void SubTime()
+ 539          {
+ 540   1              u8 i;
+ 541   1              if(SetMode == 0)
+ 542   1              {
+ 543   2                      runmode-=1;
+ 544   2                      if(runmode < 1)
+ 545   2                      {
+ 546   3                              runmode = 4;
+ 547   3                      }
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 18:03:49 PAGE 10  
+
+ 548   2              }
+ 549   1              else 
+ 550   1              {
+ 551   2                      for(i = 0; i<4; i++)
+ 552   2                      {
+ 553   3                              if(runmode == i+1)
+ 554   3                              {
+ 555   4                                      runtime[i] -= 100;
+ 556   4                                      if(runtime[i] < 400)
+ 557   4                                      {
+ 558   5                                              runtime[i] = 1200;
+ 559   5                                      }
+ 560   4                              }
+ 561   3                      }
+ 562   2              }
+ 563   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2232    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     41      15
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
