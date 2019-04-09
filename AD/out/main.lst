@@ -1,0 +1,138 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              03/02/2019 20:32:15 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "key.h"
+   4          #include "pcf8591.h"
+   5          
+   6          u8 T0RH;
+   7          u8 T0RL;
+   8          u8 flag200ms = 0;
+   9          u8 flagstart = 0;
+  10          
+  11          void ConfigTimer0(u8 ms);
+  12          void KeyAction(u8 keycode);
+  13          void CloseOther();
+  14          void RefreshVal();
+  15          
+  16          void main()
+  17          {
+  18   1              CloseOther();
+  19   1              EA = 1;
+  20   1              ConfigTimer0(2);
+  21   1      //      ShowNumber(0);
+  22   1              
+  23   1              while(1)
+  24   1              {
+  25   2                      KeyDriver();
+  26   2                      if(flagstart == 1)
+  27   2                      {
+  28   3                              if(flag200ms == 1)
+  29   3                              {
+  30   4                                      flag200ms = 0;
+  31   4                                      //ShowNumber(GetADCValue(0));
+  32   4                                      RefreshVal();
+  33   4                              }
+  34   3                      }
+  35   2              }
+  36   1      }
+  37          
+  38          void CloseOther()
+  39          {
+  40   1              P2 = (P2 & 0x1F) | 0x80;
+  41   1              P0 = 0xFF;
+  42   1              P2 &= 0x1F;
+  43   1              
+  44   1              P2 = (P2 & 0x1F) | 0xA0;
+  45   1              P0 = 0xAF;//这里不能是或！！！！
+  46   1              P2 &= 0x1F;
+  47   1      }
+  48          
+  49                  
+  50          void KeyAction(u8 keycode)
+  51          {
+  52   1              if(keycode  == '1')
+  53   1              {
+  54   2                      flagstart = 1;
+C51 COMPILER V9.52.0.0   MAIN                                                              03/02/2019 20:32:15 PAGE 2   
+
+  55   2              }
+  56   1      //              ShowNumber(3);
+  57   1      }
+  58          
+  59          void ConfigTimer0(u8 ms)
+  60          {
+  61   1              u32 tmp;
+  62   1              tmp = 11059200 / 12;
+  63   1              tmp = (tmp * ms) / 1000;
+  64   1              tmp = 65536 - tmp;
+  65   1              T0RH = (u8)(tmp>>8);
+  66   1              T0RL = (u8)tmp;
+  67   1              TMOD &= 0xF0;
+  68   1              TMOD |= 0x01;
+  69   1              TH0 = T0RH;
+  70   1              TL0 = T0RL;
+  71   1              ET0 = 1;
+  72   1              TR0 = 1;
+  73   1      } 
+  74          
+  75          void InterruptTimer0() interrupt 1
+  76          {
+  77   1              static u32 tmr200ms = 0;
+  78   1              TH0 = T0RH;
+  79   1              TL0 = T0RL;
+  80   1              tmr200ms++;
+  81   1              
+  82   1              LedScan();
+  83   1              KeyScan();
+  84   1              
+  85   1              if(tmr200ms >= 100)
+  86   1              {
+  87   2                      tmr200ms = 0;
+  88   2                      flag200ms = 1;
+  89   2              }
+  90   1      }
+  91                  
+  92          void RefreshVal()
+  93          {
+  94   1              u8 i;
+  95   1              u8 val;
+  96   1              
+  97   1              val = GetADCValue(3);
+  98   1              for(i = 7; i>1; i--)
+  99   1              {
+ 100   2                      LedBuff[i] = 0xFF;
+ 101   2              }
+ 102   1              
+ 103   1              for(i = 0;i<2; i++)
+ 104   1              {
+ 105   2                      LedBuff[i] = LedChar[val % 10];
+ 106   2                      val /= 10;
+ 107   2              }
+ 108   1              
+ 109   1              LedBuff[1] &= 0x7F;
+ 110   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    343    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.52.0.0   MAIN                                                              03/02/2019 20:32:15 PAGE 3   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      8       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

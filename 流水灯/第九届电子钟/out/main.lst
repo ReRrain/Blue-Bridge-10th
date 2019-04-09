@@ -1,0 +1,340 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT
+                    -(..\out\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "ds1302.h"
+   4          #include "key.h"
+   5          #include "ds18b02.h"
+   6          #include "time.h"
+   7          #include "main.h"
+   8          
+   9          u8 flag18b20 = 0;//0-时钟显示，1-温度显示
+  10          u8 flag200ms = 0;
+  11          u8 T0RH;
+  12          u8 T0RL;
+  13          u8 flagstop = 1;//0-led开始闪烁，1-led不闪烁
+  14          u8 flagmode = 0;//0-运行模式，1-时钟设置模式，2-闹钟设置模式
+  15          char index = 7;
+  16          u8 flagenter = 0;//0-得到实时时间，1-不刷新时间
+  17          u8 numBlinkSta = 0;//0-数码管亮，1-数码管灭
+  18          u8 sta = 0;//1-L1亮，0-L1灭
+  19          
+  20          void main()
+  21          {
+  22   1              CloseOther();
+  23   1              EA = 1;
+  24   1              ConfigTimer0(2);
+  25   1              InitDS1302();
+  26   1              Start18b02();
+  27   1              GetRealTime(&setClockTime);
+  28   1              
+  29   1              while(1)
+  30   1              {
+  31   2                      KeyDriver();
+  32   2                      if(flag200ms == 1)
+  33   2                      {
+  34   3                              flag200ms = 0;
+  35   3                              if(flagmode == 0)
+  36   3                              {
+  37   4                                      if(((setClockTime.hour) == (setAlarmTime.hour)) && ((setClockTime.min) == (setAlarmTime.min)) && ((set
+             -ClockTime.sec) == (setAlarmTime.sec)))
+  38   4                                      {
+  39   5                                              flagstop = 0;
+  40   5                                      }
+  41   4                                      if(flag18b20 == 0)
+  42   4                                      {
+  43   5                                              GetRealTime(&setClockTime);
+  44   5                                              RefreshSetTime(&setClockTime);
+  45   5                                      }
+  46   4                                      else
+  47   4                                      {
+  48   5                                              RefreshTemp();
+  49   5                                      }
+  50   4                      
+  51   4                                      if(flagstop == 0)
+  52   4                                      {
+  53   5                                              LedBlink();
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 2   
+
+  54   5                                      }
+  55   4                                      else
+  56   4                                      {
+  57   5                                              P2 = (P2 & 0x1F) | 0x80;
+  58   5                                              P0 = 0xFF;
+  59   5                                              P2 &= 0x1F;
+  60   5                                      }
+  61   4                              }
+  62   3                              else
+  63   3                              {
+  64   4                                      if(flagmode == 1)
+  65   4                                      {
+  66   5                                              SetClockTimer();
+  67   5                                      }
+  68   4                                      else
+  69   4                                      {
+  70   5                                              SetAlarmTimer();
+  71   5                                      }
+  72   4                              }
+  73   3                      }
+  74   2              }
+  75   1      }
+  76          void ShowLedNumber(u8 index, u8 num)
+  77          {
+  78   1              if(num == 0xBF)//第2.5数码管的特殊处理
+  79   1                      LedBuff[index] = 0xBF;
+  80   1              else
+  81   1                      LedBuff[index] = LedChar[num];
+  82   1      }
+  83          
+  84          void RefreshSetTime(struct sTime *time)
+  85          {
+  86   1              ShowLedNumber(7, (time->hour)>>4);
+  87   1              ShowLedNumber(6, (time->hour)&0x0F);
+  88   1              ShowLedNumber(5, 0xBF);
+  89   1              ShowLedNumber(4, (time->min)>>4);
+  90   1              ShowLedNumber(3, (time->min)&0x0F);
+  91   1              ShowLedNumber(2, 0xBF);
+  92   1              ShowLedNumber(1, (time->sec)>>4);
+  93   1              ShowLedNumber(0, (time->sec)&0x0F);
+  94   1      }
+  95          
+  96          void LedBlink()
+  97          {
+  98   1      //      static u8 sta = 0;
+  99   1              
+ 100   1              if(sta)
+ 101   1              {
+ 102   2      //              sta = 0;
+ 103   2                      P2 = (P2 & 0x1F) | 0x80;
+ 104   2                      P0 = 0xFE;
+ 105   2                      P2 &= 0x1F;
+ 106   2              }
+ 107   1              else
+ 108   1              {
+ 109   2      //              sta = 1;
+ 110   2                      P2 = (P2 & 0x1F) | 0x80;
+ 111   2                      P0 = 0xFF;
+ 112   2                      P2 &= 0x1F;
+ 113   2              }
+ 114   1      }
+ 115          
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 3   
+
+ 116          void RefreshTemp()
+ 117          {
+ 118   1              int temp;
+ 119   1              u8 i;
+ 120   1              
+ 121   1              for(i = 7; i>=3; i--)
+ 122   1              {
+ 123   2                      LedBuff[i] = 0xFF;
+ 124   2              }
+ 125   1              Get18b02Temp(&temp);
+ 126   1              Start18b02();
+ 127   1              
+ 128   1              
+ 129   1              temp >>= 4;
+ 130   1              
+ 131   1              LedBuff[2] = LedChar[temp / 10];
+ 132   1              LedBuff[1] = LedChar[temp % 10];
+ 133   1              LedBuff[0] = LedChar[12];
+ 134   1      }
+ 135          
+ 136          void CloseOther()
+ 137          {
+ 138   1              P2 = (P2 & 0x1F) | 0x80;
+ 139   1              P0 = 0xFF;
+ 140   1              P2 &= 0x1F;
+ 141   1              
+ 142   1              P2 = (P2 & 0x1F) | 0xA0;
+ 143   1              P0 = 0xAF;
+ 144   1              P2 &= 0x1F;
+ 145   1      }
+ 146          
+ 147          void ConfigTimer0(u8 ms)
+ 148          {
+ 149   1              u32 tmp;
+ 150   1               
+ 151   1              tmp = 11059200 / 12;
+ 152   1              tmp = (tmp * ms) /1000;
+ 153   1              tmp = 65536 - tmp;
+ 154   1              T0RH = (u8)(tmp>>8);//这里是右移！！！
+ 155   1              T0RL = (u8)tmp;
+ 156   1              TMOD &= 0xF0;
+ 157   1              TMOD |= 0x01;
+ 158   1              TH0 = T0RH;
+ 159   1              TL0 = T0RL;
+ 160   1              ET0 = 1;
+ 161   1              TR0 = 1;
+ 162   1      }
+ 163          void KeyAction(u8 keycode)
+ 164          {
+ 165   1              if(keycode == '1')//按下S7按键
+ 166   1              {
+ 167   2                      if(flagmode == 0)//如果当前为运行模式
+ 168   2                      {
+ 169   3                              if(flagstop == 0)
+ 170   3                              {
+ 171   4                                      flagstop = 1;
+ 172   4                              }
+ 173   3                              else
+ 174   3                              {
+ 175   4                                      flagmode = 1;//那么进入设置模式
+ 176   4                                      flagenter = 0;
+ 177   4                                      index = 7;
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 4   
+
+ 178   4                              }
+ 179   3                      }
+ 180   2                      else if(flagmode == 1)//如果按下按键当前为设置时钟模式
+ 181   2                      {
+ 182   3                              index -= 3;
+ 183   3                              if(index < 0)
+ 184   3                              {
+ 185   4                                      index = 7;
+ 186   4                                      flagmode = 0;//那么进入运行模式
+ 187   4                              }
+ 188   3                              RefreshSetTime(&setClockTime);//消除按下按键，时，分，秒，任意两个一起闪烁的情况
+ 189   3                              
+ 190   3                      }
+ 191   2              }
+ 192   1              else if(keycode == '2')
+ 193   1              {
+ 194   2                      if(flagmode == 0)//如果当前为运行模式
+ 195   2                      {
+ 196   3                              if(flagstop == 0)
+ 197   3                              {
+ 198   4                                      flagstop = 1;
+ 199   4                              }
+ 200   3                              else
+ 201   3                              {
+ 202   4                                      flagmode = 2;//那么进入设置模式
+ 203   4                                      flagenter = 0;
+ 204   4                                      index = 7;
+ 205   4                              }
+ 206   3                      }
+ 207   2                      else if(flagmode == 2)//如果按下按键当前为设置闹钟模式
+ 208   2                      {
+ 209   3                              index -= 3;
+ 210   3                              if(index < 0)
+ 211   3                              {
+ 212   4                                      index = 7;
+ 213   4                                      flagmode = 0;//那么进入运行模式
+ 214   4                              }
+ 215   3                              RefreshSetTime(&setAlarmTime);//消除按下按键，时，分，秒，任意两个一起闪烁的情况
+ 216   3                      }
+ 217   2              }
+ 218   1              else if(keycode == '3')
+ 219   1              {
+ 220   2                      if(flagmode == 0)//如果是正常运行模式
+ 221   2                      {
+ 222   3                              if(flagstop == 0)//L1处于闪烁状态
+ 223   3                              {
+ 224   4                                      flagstop = 1;//那么就让L1停止闪烁
+ 225   4                              }
+ 226   3                      }
+ 227   2                      if(flagmode == 1)//如果是时钟设置模式
+ 228   2                      {
+ 229   3                                      AddTime(&setClockTime);
+ 230   3                                      SetRealTime(&setClockTime);//将改变后的时钟时间写入DS1302
+ 231   3                                  RefreshSetTime(&setClockTime);//为了在我们设置时间时可以清楚地看到设置后的数字
+ 232   3                      }
+ 233   2                      if(flagmode == 2)//如果是闹钟设置模式
+ 234   2                      {
+ 235   3                                      AddTime(&setAlarmTime);
+ 236   3                                      RefreshSetTime(&setAlarmTime);
+ 237   3                      }
+ 238   2              }
+ 239   1              else if(keycode == '4')
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 5   
+
+ 240   1              {
+ 241   2                      if(flagmode == 0)
+ 242   2                      {
+ 243   3                              if(flagstop == 0)
+ 244   3                              {
+ 245   4                                      flagstop = 1;
+ 246   4                              }
+ 247   3                      }
+ 248   2                      if(flagmode == 1)
+ 249   2                      {
+ 250   3                              SubTime(&setClockTime);
+ 251   3                              SetRealTime(&setClockTime);
+ 252   3                              RefreshSetTime(&setClockTime);
+ 253   3                      }
+ 254   2                      if(flagmode == 2)//如果是闹钟设置模式
+ 255   2                      {
+ 256   3                                      SubTime(&setAlarmTime);
+ 257   3                              RefreshSetTime(&setAlarmTime);
+ 258   3                      }
+ 259   2              }
+ 260   1      }
+ 261          
+ 262          void Interrupttimer0() interrupt 1
+ 263          {
+ 264   1              static u16 tmr1s = 0;
+ 265   1              
+ 266   1              static u16 tmr200ms = 0;
+ 267   1              static u16 tmr5s = 0;
+ 268   1              TH0 = T0RH;
+ 269   1              TL0 = T0RL;
+ 270   1              tmr200ms++;
+ 271   1      
+ 272   1              tmr1s++;
+ 273   1              
+ 274   1              LedScan();
+ 275   1              KeyScan();
+ 276   1              
+ 277   1              if(tmr200ms >= 100)
+ 278   1              {
+ 279   2                      tmr200ms = 0;
+ 280   2                      flag200ms = 1;
+ 281   2                      sta ^= 1;
+ 282   2              }
+ 283   1              if(flagstop == 0)
+ 284   1              {
+ 285   2                      tmr5s++;
+ 286   2                      if(tmr5s >= 2500)
+ 287   2                      {
+ 288   3                              tmr5s = 0;
+ 289   3                              flagstop = 1;
+ 290   3                      }
+ 291   2              }
+ 292   1              else//一旦小灯停止闪烁，就停止5s计时
+ 293   1              {
+ 294   2                      tmr5s = 0;
+ 295   2              }
+ 296   1              if(tmr1s >= 500)
+ 297   1              {
+ 298   2                      tmr1s = 0;
+ 299   2                      numBlinkSta ^= 1;
+ 300   2              }
+ 301   1      }
+C51 COMPILER V9.52.0.0   MAIN                                                              03/09/2019 11:06:36 PAGE 6   
+
+ 302          
+ 303          
+ 304          
+ 305          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1117    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     16       7
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,154 @@
+C51 COMPILER V9.52.0.0   DS3102                                                            03/09/2019 11:06:36 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE DS3102
+OBJECT MODULE PLACED IN ..\out\ds3102.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\ds3102.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\ds3102.lst) OB
+                    -JECT(..\out\ds3102.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "ds1302.h"
+   3          
+   4          void DS1302ByteWrite(u8 dat)
+   5          {
+   6   1              u8 mask;
+   7   1              DS1302_IO = 1;
+   8   1              for(mask = 0x01; mask != 0; mask <<= 1)
+   9   1              {
+  10   2                      if((dat & mask) == 0)//
+  11   2                              DS1302_IO = 0;
+  12   2                      else
+  13   2                              DS1302_IO = 1;
+  14   2                      DS1302_CK = 1;//拉高时钟
+  15   2                      DS1302_CK = 0;//拉低时钟,完成一个位的操作
+  16   2              }
+  17   1              DS1302_IO = 1;//确保释放io引脚
+  18   1      }
+  19          
+  20          u8 DS1302ByteRead()
+  21          {
+  22   1              u8 mask;
+  23   1              u8 dat = 0;
+  24   1              
+  25   1              for(mask = 0x01; mask != 0; mask <<=1)
+  26   1              {
+  27   2                      if(DS1302_IO)
+  28   2                              dat |= mask;
+  29   2                      DS1302_CK = 1;
+  30   2                      DS1302_CK = 0;
+  31   2              }
+  32   1              return dat;
+  33   1      }
+  34           
+  35          
+  36          
+  37          void DS1302SingleWrite(u8 reg, u8 dat)
+  38          {
+  39   1              DS1302_CE = 1;
+  40   1              DS1302ByteWrite((reg << 1) | 0x80);
+  41   1              DS1302ByteWrite(dat);
+  42   1              DS1302_CE = 0;
+  43   1      }
+  44          
+  45          u8 DS1302SingleRead(u8 reg)
+  46          {
+  47   1              u8 dat;
+  48   1              
+  49   1              DS1302_CE = 1;
+  50   1              DS1302ByteWrite((reg << 1) | 0x81);//为什么左移还不太理解
+  51   1              dat = DS1302ByteRead();
+  52   1              DS1302_CE = 0;
+  53   1              DS1302_IO = 0;//单字节读必须要加这个！！！
+  54   1              
+C51 COMPILER V9.52.0.0   DS3102                                                            03/09/2019 11:06:36 PAGE 2   
+
+  55   1              return dat;
+  56   1      }
+  57          
+  58          
+  59          void DS1302BurstWrite(u8 *dat)
+  60          {
+  61   1              u8 i;
+  62   1               
+  63   1              DS1302_CE = 1;
+  64   1              DS1302ByteWrite(0xBE);
+  65   1              for(i = 0; i<7; i++)
+  66   1              {
+  67   2                      DS1302ByteWrite(*dat++);
+  68   2              }
+  69   1              DS1302_CE = 0;
+  70   1      }
+  71          
+  72          void DS1302BurstRead(u8 *dat)
+  73          {
+  74   1              u8 i;
+  75   1              
+  76   1              DS1302_CE = 1;
+  77   1              DS1302ByteWrite(0xBF);
+  78   1              for(i = 0; i<7; i++)
+  79   1              {
+  80   2                      dat[i] = DS1302ByteRead();
+  81   2              }
+  82   1              DS1302_CE = 0;
+  83   1              DS1302_IO = 0;//突发读必须加！！！
+  84   1              
+  85   1      }
+  86          
+  87          void GetRealTime(struct sTime *time)//得到时间，读出
+  88          {
+  89   1              u8 buf[8];
+  90   1              
+  91   1              DS1302BurstRead(buf);
+  92   1              time->year = buf[6] + 0x2000;
+  93   1              time->mon = buf[4];
+  94   1              time->day = buf[3];
+  95   1              time->hour = buf[2];
+  96   1              time->min = buf[1];
+  97   1              time->sec = buf[0];
+  98   1              time->week = buf[5];
+  99   1      }
+ 100          
+ 101          void SetRealTime(struct sTime *time)//设置时间日期，写入
+ 102          {
+ 103   1              u8 buf[8];
+ 104   1              
+ 105   1              buf[7] = 0;
+ 106   1              buf[6] = time->year;
+ 107   1              buf[4] = time->mon;
+ 108   1              buf[3] = time->day;
+ 109   1              buf[2] = time->hour;
+ 110   1              buf[1] = time->min;
+ 111   1              buf[0] = time->sec;
+ 112   1              buf[5] = time->week;
+ 113   1              DS1302BurstWrite(buf);  
+ 114   1      }
+ 115          
+ 116          void InitDS1302()
+C51 COMPILER V9.52.0.0   DS3102                                                            03/09/2019 11:06:36 PAGE 3   
+
+ 117          {
+ 118   1              struct sTime InitTime[] = {
+ 119   1                      0x18, 0x03, 0x01, 0x23, 0x59, 0x50, 0x04
+ 120   1              };
+ 121   1              DS1302_CE = 0;
+ 122   1              DS1302_CK = 0;
+ 123   1              DS1302SingleWrite(7, 0x00);//撤销写保护允许写入数据
+ 124   1              SetRealTime(&InitTime);
+ 125   1      }
+ 126          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    434    ----
+   CONSTANT SIZE    =      8    ----
+   XDATA SIZE       =   ----      33
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

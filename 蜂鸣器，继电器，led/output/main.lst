@@ -1,0 +1,44 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              02/16/2019 11:14:07 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\output\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\source\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\output\main.lst) OBJECT
+                    -(..\output\main.obj)
+
+line level    source
+
+   1          #include<stc15.h>
+   2          sbit buzz = P0^6;
+   3          sbit relay = P0^4;
+   4          sbit led = P0^0;
+   5          void main()
+   6          {
+   7   1              P2 = ((P2 & 0x1F) | 0xA0);
+   8   1              buzz = 0;
+   9   1              P2 = P2 & 0x1F;
+  10   1              
+  11   1              P2 = ((P2 & 0x1F) | 0xA0);
+  12   1              relay = 1;
+  13   1              P2 = P2 & 0x1F;
+  14   1              
+  15   1              P2 = ((P2 & 0x1F) | 0x80);
+  16   1              led = 1;
+  17   1              P2 = P2 & 0x1F;
+  18   1              
+  19   1              while(1);
+  20   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     41    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

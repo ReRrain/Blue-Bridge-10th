@@ -1,0 +1,210 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              02/16/2019 19:49:13 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\sor\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          /*静态显示*/
+   2          //#include<stc15.h>
+   3          
+   4          //sbit buzz = P0^6;
+   5          //sbit relay = P0^4;
+   6          
+   7          //void main()
+   8          //{
+   9          //      P2 = (P2 & 0x1F) | 0xA0;//关闭蜂鸣器和继电器
+  10          //      buzz = 0;
+  11          //      relay = 0;
+  12          //      P2 = P2 & 0x1F;
+  13          //      
+  14          //      P2 = (P2 & 0x1F) | 0xC0;//位选
+  15          //      P0 = (P0 & 0x1F) | 0x01;//选中com1
+  16          //      P2 = P2 & 0x1F;
+  17          //      
+  18          //      P2 = (P2 & 0x1F) | 0xE0;//段选
+  19          //      P0 = 0xA4;//显示数字1
+  20          //      P2 = P2 & 0x1F;         
+  21          //      
+  22          //      while(1);
+  23          //}
+  24          ///*动态显示*/
+  25          //#include<stc15.h>
+  26          // 
+  27          //typedef unsigned char u8;
+  28          //typedef unsigned int u16;
+  29          
+  30          //sbit buzz = P0^6;
+  31          //sbit relay = P0^4;
+  32          
+  33          //u8 code led[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,0x88,0x83,0xC6,0xA1,0x86,0x8E};
+  34          //void main()
+  35          //{
+  36          //      u16 i;//变量必须定义在函数开始的位置
+  37          //      u8 count = 0;//。。。。。。。。。。
+  38          //      
+  39          //      P2 = (P2 & 0x1F) | 0xA0;//关掉蜂鸣器和继电器
+  40          //      P0 = 0xAF;
+  41          //      P2 = P2 & 0x1F;
+  42          //      
+  43          //      P2 = (P2 & 0x1F) | 0xC0;//位选
+  44          //      P0 = 0x01;
+  45          //      P2 = P2 & 0x1F;
+  46          //      
+  47          //      while(1)
+  48          //      {
+  49          //              
+  50          //              P2 = (P2 & 0x1F) | 0xE0;//段选
+  51          //              P0 = led[count++];
+  52          //              if(count > 0x0F)//注意计数值是大于15
+  53          //                      count = 0x00;
+  54          //              for(i = 0;i<60000;i++);
+C51 COMPILER V9.52.0.0   MAIN                                                              02/16/2019 19:49:13 PAGE 2   
+
+  55          //              P2 = P2 & 0x1F;
+  56          //      }
+  57          //}
+  58          /*高位为0则不显示，从0~9999999利用定时器进行1s计数*/
+  59          #include<stc15.h>
+  60           
+  61          typedef unsigned char u8;
+  62          typedef unsigned int u16;
+  63          typedef unsigned long u32;
+  64          
+  65          u8 TORH;
+  66          u8 TORL;
+  67          u16 flag1s = 0;
+  68          
+  69          u8 Ledchar[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,0x88,0x83,0xC6,0xA1,0x86,0x8E};
+  70          u8 LedBuff[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};//数码管缓冲区，确保打开时全部不显示
+  71          
+  72          void CloseOther();
+  73          void LedScan();
+  74          void ShowNumber(u32 dat);
+  75          void ConfigTimer0 (u16 ms);
+  76          
+  77          void main()
+  78          {
+  79   1              u32 sec = 0;//sec表示经过了多长时间（秒）
+  80   1              CloseOther();
+  81   1              EA = 1;//打开总开关
+  82   1              ConfigTimer0(1);
+  83   1              ShowNumber(0);
+  84   1              
+  85   1              while(1)//此循环每过一秒执行一次
+  86   1              {
+  87   2                      if(flag1s)//如果flag1s为1，则进入循环（即计数1秒）
+  88   2                      {
+  89   3                              flag1s = 0;
+  90   3                              sec++;
+  91   3                              if(sec > 99999999)
+  92   3                                      sec = 0;
+  93   3                              else
+  94   3                                      ShowNumber(sec); 
+  95   3                      }
+  96   2              }
+  97   1      }
+  98          
+  99          void CloseOther()
+ 100          {
+ 101   1              P2 = (P2 & 0x1F) | 0x80;//关闭八个led
+ 102   1              P0 = 0xFF;
+ 103   1              P2 = P2 & 0x1F;
+ 104   1              
+ 105   1              P2 = (P2 & 0x1F) | 0xA0;//关闭蜂鸣器和继电器
+ 106   1              P0 = 0xAF;
+ 107   1              P2 = P2 & 0x1F;
+ 108   1      }
+ 109           
+ 110          void ConfigTimer0(u16 ms)//计时时间为1ms
+ 111          {
+ 112   1          u32 tmp;
+ 113   1              tmp = 11059200 / 12;
+ 114   1              tmp = (tmp * ms) / 1000;
+ 115   1              tmp = 65536 - tmp;
+ 116   1              TORH = (u8)(tmp>>8);//将tmp数值的低八位给TORH
+C51 COMPILER V9.52.0.0   MAIN                                                              02/16/2019 19:49:13 PAGE 3   
+
+ 117   1              TORL  = (u8)tmp;//将tmp数值的低八位给TORL
+ 118   1              TMOD &= 0xF0;
+ 119   1              TMOD |= 0x01;
+ 120   1              TH0 = TORH;
+ 121   1              TL0 = TORL;
+ 122   1              ET0 = 1;
+ 123   1              TR0 = 1;
+ 124   1      }
+ 125          
+ 126          void interruptTimer0()interrupt 1//定时器0对应的中断号为1
+ 127          {
+ 128   1              static u16 tmr1s = 0;
+ 129   1              TH0 = TORH;
+ 130   1              TL0 = TORL;
+ 131   1              LedScan();
+ 132   1              tmr1s++; 
+ 133   1              if(tmr1s >=1000)//计时1000次（即计时1秒）
+ 134   1              {
+ 135   2                      flag1s = 1;
+ 136   2                      tmr1s = 0;
+ 137   2              }
+ 138   1      }
+ 139          
+ 140          void ShowNumber(u32 dat)
+ 141          {
+ 142   1              char i;//u8是无符号数，执行i--操作时i需要为有符号数
+ 143   1              u8 buff[8];
+ 144   1              for(i = 0;i<8;i++)
+ 145   1              {
+ 146   2                  buff[i] = dat % 10;
+ 147   2                      dat = dat / 10;
+ 148   2              }
+ 149   1              for(i = 7;i>0;i--)//最低位的数码管必须有数，所以不能为0
+ 150   1              {
+ 151   2                      if(buff[i] == 0)
+ 152   2                              LedBuff[i] = 0xFF;
+ 153   2                      else
+ 154   2                 break;
+ 155   2              }
+ 156   1              for(;i>=0;i--)
+ 157   1              {
+ 158   2                      LedBuff[i] = Ledchar[buff[i]];
+ 159   2              }
+ 160   1      }
+ 161          
+ 162          void LedScan()
+ 163          {
+ 164   1              static u8 index = 0;
+ 165   1              P2 = (P2 & 0x1F) | 0xE0;//消隐，确保每个数码管段选打开时均不显示
+ 166   1              P0 = 0xFF;
+ 167   1              P2 &= 0x1F;
+ 168   1              
+ 169   1              P2 = (P2 & 0x1F) | 0xC0;//位选
+ 170   1              P0 = 0x80 >> index;//选定com8
+ 171   1              P2 = P2 & 0x1F;
+ 172   1              
+ 173   1              P2 = (P2 & 0x1F) | 0xE0;
+ 174   1              P0 = LedBuff[index];
+ 175   1              P2 = P2 & 0x1F;
+ 176   1              
+ 177   1              index++;
+ 178   1              if(index>=7)
+C51 COMPILER V9.52.0.0   MAIN                                                              02/16/2019 19:49:13 PAGE 4   
+
+ 179   1                      index = 0;
+ 180   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    526    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     31      21
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

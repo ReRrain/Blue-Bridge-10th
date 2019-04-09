@@ -1,0 +1,6 @@
+"..\out\ds18b02.obj",
+"..\out\key.obj",
+"..\out\led.obj",
+"..\out\main.obj" 
+TO "..\out\18B02" 
+PRINT("..\out\18B02.m51") RAMSIZE(256) 

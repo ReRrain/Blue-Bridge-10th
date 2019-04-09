@@ -1,0 +1,3 @@
+"..\main.obj" 
+TO "..\we" 
+PRINT("..\we.m51") RAMSIZE(256) 

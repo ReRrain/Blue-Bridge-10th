@@ -1,0 +1,78 @@
+C51 COMPILER V9.52.0.0   EEPROM                                                            02/22/2019 16:43:06 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE EEPROM
+OBJECT MODULE PLACED IN ..\out\eeprom.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\eeprom.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\eeprom.lst) OB
+                    -JECT(..\out\eeprom.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "i2.h"
+   3          
+   4          void E2Read(u8 *buf, u8 addr, u8 len)
+   5          {
+   6   1              do{
+   7   2                      I2CStart();
+   8   2                      if(I2CWrite(0x50 << 1))
+   9   2                      {
+  10   3                              break;
+  11   3                      }       
+  12   2                      I2CStop();
+  13   2              }while(1);
+  14   1              I2CWrite(addr);
+  15   1              I2CStart();
+  16   1              I2CWrite((0x50 << 1) | 0x01);
+  17   1              
+  18   1              while(len > 1)
+  19   1              {
+  20   2                      *buf++ = I2CReadACK();
+  21   2                      len--;
+  22   2              }
+  23   1              *buf = I2CReadNACK();
+  24   1              I2CStop();      
+  25   1      }
+  26          
+  27          void E2Write(u8 *buf, u8 addr, u8 len)
+  28          {
+  29   1              while(len > 0)
+  30   1              {
+  31   2                      do{
+  32   3                              I2CStart();
+  33   3                              if(I2CWrite(0x50 << 1))
+  34   3                              {
+  35   4                                      break;
+  36   4                              }
+  37   3                              I2CStop();
+  38   3                      }while(1);
+  39   2                      I2CWrite(addr);
+  40   2                      while(len > 0)
+  41   2                      {
+  42   3                              I2CWrite(*buf++);
+  43   3                              addr++;
+  44   3                              len--;
+  45   3                              if((addr & 0x70) == 0)
+  46   3                              {
+  47   4                                      break;
+  48   4                              }
+  49   3                      }
+  50   2                      I2CStop();
+  51   2              }
+  52   1      }
+
+
+C51 COMPILER V9.52.0.0   EEPROM                                                            02/22/2019 16:43:06 PAGE 2   
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    208    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      10
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

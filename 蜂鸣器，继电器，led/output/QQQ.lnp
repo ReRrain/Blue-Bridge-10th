@@ -1,0 +1,3 @@
+"..\output\main.obj" 
+TO "..\output\QQQ" 
+PRINT("..\output\QQQ.m51") RAMSIZE(256) 

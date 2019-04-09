@@ -1,0 +1,5 @@
+"..\out\ds3102.obj",
+"..\out\led.obj",
+"..\out\main.obj" 
+TO "..\out\ds1302" 
+PRINT("..\out\ds1302.m51") RAMSIZE(256) 

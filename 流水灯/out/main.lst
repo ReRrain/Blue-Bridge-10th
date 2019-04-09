@@ -1,0 +1,122 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              03/07/2019 16:25:52 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          /*#include<stc15.h>
+   2          
+   3          typedef unsigned char u8;
+   4          typedef unsigned int u16;
+   5          
+   6          void Closeothers();
+   7          void Flowleds();
+   8          
+   9          void main()
+  10          {
+  11                  Closeothers();
+  12                  
+  13                  while(1)
+  14                  {
+  15                          Flowleds();
+  16                  }
+  17          }
+  18          
+  19          void Closeothers()
+  20          {
+  21                  P2 = (P2 & 0x1F) | 0xA0;
+  22                  P0 = P0 & 0xAF;
+  23                  P2 = P2 & 0x1F;
+  24          }
+  25          
+  26          void Flowleds()
+  27          {
+  28                  u16 i;
+  29                  static u8 shift = 0x01;
+  30                  static bit flag = 1;
+  31                  P2 = (P2 & 0x1F) | 0x80;
+  32                  
+  33                  P0 = ~shift;
+  34                  if(flag == 1)
+  35                  {
+  36                          shift <<= 1;
+  37                          if(shift == 0x80)
+  38                                  flag = 0;
+  39                  }
+  40                  else 
+  41                  {
+  42                          shift >>=1;
+  43                          if(shift == 0x01)
+  44                                  flag = 1;
+  45                  }
+  46                  for(i = 0;i<50000;i++)
+  47                  P2 = P2 & 0x1F;
+  48          }*/
+  49          #include<stc15.h>
+  50          typedef unsigned char u8;
+  51          typedef unsigned int u16;
+  52          
+  53          void closeothers();
+  54          void flowleds();
+C51 COMPILER V9.52.0.0   MAIN                                                              03/07/2019 16:25:52 PAGE 2   
+
+  55          
+  56          void main()
+  57          {
+  58   1              closeothers();
+  59   1              
+  60   1              while(1)
+  61   1              {
+  62   2                      flowleds();
+  63   2              }
+  64   1      }
+  65          
+  66          void closeothers()
+  67          {
+  68   1              P2 = (P2 & 0x1F) | 0xA0;
+  69   1              P0 = P0 & 0xAF;
+  70   1              P2 = P2 & 0x1F;
+  71   1      }
+  72          
+  73          void flowleds()
+  74          {
+  75   1              u16 i;
+  76   1              static bit flag = 1;
+  77   1              static u8 shift = 0x01;
+  78   1              P2 = (P2 & 0x1F) | 0x80;
+  79   1              
+  80   1              P0 = ~shift;
+  81   1              if(flag == 1)
+  82   1              {
+  83   2                      shift <<= 1;
+  84   2                      if(shift == 0x80)
+  85   2                              flag = 0;
+  86   2              }
+  87   1              else
+  88   1              {
+  89   2                      shift >>=1;
+  90   2                      if(shift == 0x01)
+  91   2                              flag = 1;
+  92   2              }
+  93   1              
+  94   1              for(i = 0 ; i<50000 ; i++)
+  95   1              P2 = (P2 & 0x1F);
+  96   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     92    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

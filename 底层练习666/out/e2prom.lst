@@ -1,0 +1,77 @@
+C51 COMPILER V9.52.0.0   E2PROM                                                            03/22/2019 19:35:20 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE E2PROM
+OBJECT MODULE PLACED IN ..\out\e2prom.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\e2prom.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\e2prom.lst) OB
+                    -JECT(..\out\e2prom.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "i2c.h"
+   3          
+   4          void E2Write(u8 *buf, u8 addr, u8 len)
+   5          {
+   6   1              while(len > 0)
+   7   1              {
+   8   2                      do{
+   9   3                              I2CStart();
+  10   3                              if(I2CWrite(0x50 << 1))
+  11   3                              {
+  12   4                                      break;
+  13   4                              }
+  14   3                              I2CStop();
+  15   3                      }while(1);
+  16   2                      I2CWrite(addr);
+  17   2                      while(len > 0)
+  18   2                      {
+  19   3                              I2CWrite(*buf++);
+  20   3                              len--;
+  21   3                              addr++;
+  22   3                              if((addr & 0x7F) == 0x00)
+  23   3                              {
+  24   4                                      break;
+  25   4                              }
+  26   3                              I2CStop();
+  27   3                      }
+  28   2              }
+  29   1      }
+  30          
+  31          void E2Read(u8 *buf, u8 addr, u8 len)
+  32          {
+  33   1              do{
+  34   2                      I2CStart();
+  35   2                      if(I2CWrite(0x50 << 1))
+  36   2                      {
+  37   3                              break;
+  38   3                      }
+  39   2                      I2CStop();
+  40   2              }while(1);
+  41   1              I2CWrite(addr);
+  42   1              I2CStart();
+  43   1              I2CWrite((0x50 << 1) | 0x01);
+  44   1              while(len > 1)
+  45   1              {
+  46   2                      *buf++ = I2CReadACK();
+  47   2                      len--;
+  48   2              }
+  49   1              *buf = I2CReadNAK();
+  50   1              I2CStop();
+  51   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+C51 COMPILER V9.52.0.0   E2PROM                                                            03/22/2019 19:35:20 PAGE 2   
+
+   CODE SIZE        =    207    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----      10
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

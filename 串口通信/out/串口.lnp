@@ -1,0 +1,4 @@
+"..\out\main.obj",
+"..\out\uart.obj" 
+TO "..\out\´®¿Ú" 
+PRINT("..\out\´®¿Ú.m51") RAMSIZE(256) 

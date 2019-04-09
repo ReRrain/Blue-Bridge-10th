@@ -1,0 +1,138 @@
+BL51 BANKED LINKER/LOCATER V6.22                                                        03/07/2019  16:25:52  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
+C:\KEIL\C51\BIN\BL51.EXE ..\out\main.obj TO ..\out\we PRINT (..\out\we.m51) RAMSIZE (256)
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  ..\out\main.obj (MAIN)
+  C:\KEIL\C51\LIB\C51S.LIB (?C_STARTUP)
+  C:\KEIL\C51\LIB\C51S.LIB (?C?SLCMP)
+  C:\KEIL\C51\LIB\C51S.LIB (?C_INIT)
+
+
+LINK MAP OF MODULE:  ..\out\we (MAIN)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            DATA    0008H     0001H     UNIT         ?DT?MAIN
+                    0009H     0017H                  *** GAP ***
+            BIT     0020H.0   0000H.1   UNIT         ?BI?MAIN
+                    0020H.1   0000H.7                *** GAP ***
+            IDATA   0021H     0001H     UNIT         ?STACK
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+            CODE    0003H     008CH     UNIT         ?C_C51STARTUP
+            CODE    008FH     0045H     UNIT         ?PR?FLOWLEDS?MAIN
+            CODE    00D4H     0016H     UNIT         ?C?LIB_CODE
+            CODE    00EAH     000FH     UNIT         ?PR?CLOSEOTHERS?MAIN
+            CODE    00F9H     0008H     UNIT         ?PR?MAIN?MAIN
+            CODE    0101H     0006H     UNIT         ?C_INITSEG
+
+
+
+OVERLAY MAP OF MODULE:   ..\out\we (MAIN)
+
+
+SEGMENT
+  +--> CALLED SEGMENT
+---------------------
+?C_C51STARTUP
+  +--> ?PR?MAIN?MAIN
+  +--> ?C_INITSEG
+
+?PR?MAIN?MAIN
+  +--> ?PR?CLOSEOTHERS?MAIN
+  +--> ?PR?FLOWLEDS?MAIN
+
+
+
+SYMBOL TABLE OF MODULE:  ..\out\we (MAIN)
+
+  VALUE           TYPE          NAME
+BL51 BANKED LINKER/LOCATER V6.22                                                      03/07/2019  16:25:52  PAGE 2
+
+
+  ----------------------------------
+
+  -------         MODULE        MAIN
+  C:0000H         SYMBOL        _ICE_DUMMY_
+  D:0080H         PUBLIC        P0
+  D:0090H         PUBLIC        P1
+  D:00A0H         PUBLIC        P2
+  D:00B0H         PUBLIC        P3
+  D:00C0H         PUBLIC        P4
+  D:00C8H         PUBLIC        P5
+  D:00E8H         PUBLIC        P6
+  D:00F8H         PUBLIC        P7
+  D:00A8H         PUBLIC        IE
+  D:00B8H         PUBLIC        IP
+  D:00D8H         PUBLIC        CCON
+  C:00F9H         PUBLIC        main
+  C:00EAH         PUBLIC        closeothers
+  D:0098H         PUBLIC        SCON
+  D:0088H         PUBLIC        TCON
+  C:008FH         PUBLIC        flowleds
+  D:00D0H         PUBLIC        PSW
+  -------         PROC          MAIN
+  C:00F9H         LINE#         56
+  C:00F9H         LINE#         57
+  C:00F9H         LINE#         58
+  C:00FCH         LINE#         60
+  C:00FCH         LINE#         61
+  C:00FCH         LINE#         62
+  C:00FFH         LINE#         63
+  -------         ENDPROC       MAIN
+  -------         PROC          CLOSEOTHERS
+  C:00EAH         LINE#         66
+  C:00EAH         LINE#         67
+  C:00EAH         LINE#         68
+  C:00F2H         LINE#         69
+  C:00F5H         LINE#         70
+  C:00F8H         LINE#         71
+  -------         ENDPROC       CLOSEOTHERS
+  -------         PROC          FLOWLEDS
+  -------         DO            
+  D:0082H         SYMBOL        i
+  B:0020H.0       SYMBOL        flag
+  D:0008H         SYMBOL        shift
+  -------         ENDDO         
+  C:008FH         LINE#         73
+  C:008FH         LINE#         74
+  C:008FH         LINE#         78
+  C:0097H         LINE#         80
+  C:009CH         LINE#         81
+  C:009FH         LINE#         82
+  C:009FH         LINE#         83
+  C:00A5H         LINE#         84
+  C:00A8H         LINE#         85
+  C:00AAH         LINE#         86
+  C:00ACH         LINE#         88
+  C:00ACH         LINE#         89
+  C:00B2H         LINE#         90
+BL51 BANKED LINKER/LOCATER V6.22                                                      03/07/2019  16:25:52  PAGE 3
+
+
+  C:00B5H         LINE#         91
+  C:00B7H         LINE#         92
+  C:00B7H         LINE#         94
+  C:00CDH         LINE#         95
+  C:00D3H         LINE#         96
+  -------         ENDPROC       FLOWLEDS
+  -------         ENDMOD        MAIN
+
+  -------         MODULE        ?C?SLCMP
+  C:00D4H         PUBLIC        ?C?SLCMP
+  -------         ENDMOD        ?C?SLCMP
+
+Program Size: data=10.1 xdata=0 code=263
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

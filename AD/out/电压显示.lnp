@@ -1,0 +1,7 @@
+"..\out\key.obj",
+"..\out\led.obj",
+"..\out\main.obj",
+"..\out\pcf8591.obj",
+"..\out\i2c.obj" 
+TO "..\out\电压显示" 
+PRINT("..\out\电压显示.m51") RAMSIZE(256) 

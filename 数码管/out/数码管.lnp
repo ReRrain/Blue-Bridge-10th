@@ -1,0 +1,3 @@
+"..\out\main.obj" 
+TO "..\out\数码管" 
+PRINT("..\out\数码管.m51") RAMSIZE(256) 

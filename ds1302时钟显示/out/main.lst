@@ -1,0 +1,125 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              02/28/2019 13:52:51 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "ds1302.h"
+   4          
+   5          u8 flag200ms = 0;
+   6          u8 T0RH;
+   7          u8 T0RL;
+   8          
+   9          struct sTime buffTime;
+  10          
+  11          void ConfigTimer0(u8 ms);
+  12          void CloseOther();
+  13          void RefreshTime();
+  14          
+  15          void main()
+  16          {
+  17   1              CloseOther();
+  18   1              EA = 1;
+  19   1              ConfigTimer0(2);
+  20   1              InitDS1302();
+  21   1              
+  22   1              while(1)
+  23   1              {
+  24   2                      if(flag200ms == 1)
+  25   2                      {
+  26   3                              flag200ms = 0;
+  27   3                              RefreshTime();
+  28   3                      }
+  29   2              }
+  30   1      }
+  31          
+  32          void CloseOther()
+  33          {
+  34   1              P2 = (P2 & 0x1F) | 0x80;
+  35   1              P0 = 0xFF;
+  36   1              P2 &= 0x1F;
+  37   1              
+  38   1              P2 = (P2 & 0x1F) | 0xA0;
+  39   1              P0 = 0xAF;
+  40   1              P2 &= 0x1F;
+  41   1      }
+  42          
+  43          void ConfigTimer0(u8 ms)
+  44          {
+  45   1              u32 tmp;
+  46   1               
+  47   1              tmp = 11059200 / 12;
+  48   1              tmp = (tmp * ms) /1000;
+  49   1              tmp = 65536 - tmp;
+  50   1              T0RH = (u8)(tmp>>8);//这里是右移！！！
+  51   1              T0RL = (u8)tmp;
+  52   1              TMOD &= 0xF0;
+  53   1              TMOD |= 0x01;
+  54   1              TH0 = T0RH;
+C51 COMPILER V9.52.0.0   MAIN                                                              02/28/2019 13:52:51 PAGE 2   
+
+  55   1              TL0 = T0RL;
+  56   1              ET0 = 1;
+  57   1              TR0 = 1;
+  58   1      }
+  59          
+  60          
+  61          
+  62          void Interrupttimer0() interrupt 1
+  63          {
+  64   1              static u16 tmr200ms = 0;
+  65   1              TH0 = T0RH;
+  66   1              TL0 = T0RL;
+  67   1              tmr200ms++;
+  68   1              LedScan();
+  69   1              
+  70   1              if(tmr200ms >= 100)
+  71   1              {
+  72   2                      flag200ms = 1;
+  73   2                      tmr200ms = 0;
+  74   2              }
+  75   1      }
+  76          
+  77          void ShowLedNumber(u8 index, u8 num)
+  78          {
+  79   1              if(num == 0xBF)//第2.5数码管的特殊处理
+  80   1                      LedBuff[index] = 0xBF;
+  81   1              else
+  82   1                      LedBuff[index] = LedChar[num];
+  83   1      }
+  84          
+  85          
+  86          void RefreshTime()
+  87          {
+  88   1              GetRealTime(&buffTime);
+  89   1              ShowLedNumber(7, buffTime.hour>>4);
+  90   1              ShowLedNumber(6, buffTime.hour&0x0F);
+  91   1              ShowLedNumber(5, 0xBF);
+  92   1              ShowLedNumber(4, buffTime.min>>4);
+  93   1              ShowLedNumber(3, buffTime.min&0x0F);
+  94   1              ShowLedNumber(2, 0xBF);
+  95   1              ShowLedNumber(1, buffTime.sec>>4);
+  96   1              ShowLedNumber(0, buffTime.sec&0x0F);
+  97   1      }
+  98          
+  99          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    338    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     13       4
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,6 @@
+"..\out\eeprom.obj",
+"..\out\i2.obj",
+"..\out\main.obj",
+"..\out\uart.obj" 
+TO "..\out\eeprom" 
+PRINT("..\out\eeprom.m51") RAMSIZE(256) 

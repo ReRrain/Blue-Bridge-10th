@@ -1,0 +1,90 @@
+C51 COMPILER V9.52.0.0   KEY                                                               03/22/2019 19:35:20 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN ..\out\key.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\key.c LARGE BROWSE DEBUG OBJECTEXTEND PRINT(..\out\key.lst) OBJECT(.
+                    -.\out\key.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          
+   3          u8 KeySta[4][4] = {{1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}};
+   4          u8 KeyCodeMap[4][4] = {{'1', '2', '3', '0'}, {'4', '5', '6', '0'}, {'7', '8', '9', '0'}, {'0', '0', '0', '
+             -0'}};
+   5                  
+   6          extern void KeyAction(u8 keycode);
+   7                  
+   8          void KeyScan()
+   9          {
+  10   1              static u8 keybuff[4][4] = {{0xFF, 0xFF, 0xFF, 0xFF}, {0xFF, 0xFF, 0xFF, 0xFF},{0xFF, 0xFF, 0xFF, 0xFF},{0
+             -xFF, 0xFF, 0xFF, 0xFF}};
+  11   1              static u8 keyout = 0;
+  12   1          u8 i;
+  13   1              
+  14   1              keybuff[keyout][0] = (keybuff[keyout][0] << 1) | KEY_IN_1;
+  15   1              keybuff[keyout][1] = (keybuff[keyout][1] << 1) | KEY_IN_2;
+  16   1              keybuff[keyout][2] = (keybuff[keyout][2] << 1) | KEY_IN_3;
+  17   1              keybuff[keyout][3] = (keybuff[keyout][3] << 1) | KEY_IN_4;
+  18   1      
+  19   1              for(i = 0; i<4; i++)
+  20   1              {
+  21   2                      if(keybuff[keyout][i] == 0xFF)
+  22   2                      {
+  23   3                              KeySta[keyout][i] = 1;
+  24   3                      }
+  25   2                      else if(keybuff[keyout][i] == 0x00)
+  26   2                      {
+  27   3                              KeySta[keyout][i] = 0;
+  28   3                      }
+  29   2              }
+  30   1              keyout++;
+  31   1              keyout %= 4;
+  32   1              
+  33   1              switch(keyout)
+  34   1              {
+  35   2                      case 0: KEY_OUT_1 = 0; KEY_OUT_4 = 1;break;
+  36   2                      case 1: KEY_OUT_2 = 0; KEY_OUT_1 = 1;break;
+  37   2                      case 2: KEY_OUT_3 = 0; KEY_OUT_2 = 1;break;
+  38   2                      case 3: KEY_OUT_4 = 0; KEY_OUT_3 = 1;break;
+  39   2                      default: break;
+  40   2              }
+  41   1      }
+  42          
+  43          void KeyDriver()
+  44          {
+  45   1              static u8 backup[4][4] = {{1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}, {1, 1, 1, 1}};
+  46   1              u8 i, j;
+  47   1                      
+  48   1              for(i = 0; i<4; i++)
+  49   1              {
+  50   2                      for(j = 0; j<4; j++)
+  51   2                      {
+  52   3                              if(KeySta[i][j] != backup[i][j])
+C51 COMPILER V9.52.0.0   KEY                                                               03/22/2019 19:35:20 PAGE 2   
+
+  53   3                              {
+  54   4                                      if(backup[i][j] == 1)
+  55   4                                      {
+  56   5                                              KeyAction(KeyCodeMap[i][j]);
+  57   5                                      }
+  58   4                                      backup[i][j] = KeySta[i][j];
+  59   4                              }
+  60   3                      }
+  61   2              }
+  62   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    521    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     65       2
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
