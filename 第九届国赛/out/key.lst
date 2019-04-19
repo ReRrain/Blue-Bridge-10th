@@ -1,0 +1,96 @@
+C51 COMPILER V9.52.0.0   KEY                                                               04/09/2019 15:02:48 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN ..\out\key.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\key.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\key.lst) OBJECT(..\out\
+                    -key.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          
+   3          u8 Keysta[4] = {1, 1, 1, 1};
+   4          u8 KeyCodeMap[4] = {'1', '2', '3', '4'};
+   5          u16 KeyDownTime[4] = {0, 0, 0, 0};//°´¼ü°´ÏÂµÄÊ±¼ä£¬×¢ÒâÕâÀïÒ²ÒªÓÃu16!!!!!!!!!!!!
+   6          extern void KeyAction(u8 keycode);
+   7          extern u8 flagset;
+   8          
+   9          void KeyScan()//Ïû¶¶
+  10          {
+  11   1              u8 i;
+  12   1              static u8 keybuff[4] = {0xFF,0xFF,0xFF,0xFF};
+  13   1              
+  14   1              keybuff[0] = (keybuff[0] << 1) | KEY_IN_1;
+  15   1              keybuff[1] = (keybuff[1] << 1) | KEY_IN_2;
+  16   1              keybuff[2] = (keybuff[2] << 1) | KEY_IN_3;
+  17   1              keybuff[3] = (keybuff[3] << 1) | KEY_IN_4;
+  18   1              
+  19   1              for(i = 0;i<4;i++)
+  20   1              {
+  21   2                      if(keybuff[i] == 0xFF)//É¨Ãè8´Î£¬8Î»¶¼Îª1
+  22   2                      {
+  23   3                              Keysta[i] = 1;//ËµÃ÷µ±Ç°°´¼ü²¢Ã»ÓÐ±»°´ÏÂ
+  24   3                              KeyDownTime[i] = 0;//ÕâÀï×¢ÒâÒ²Òª¿¼ÂÇµ½£¡£¡£¡£¡£¡µ±°´¼üÃ»ÓÐ°´ÏÂÊ±£¬keydowntime[i]ÊÇÎª0µÄ
+  25   3                      }
+  26   2                      else if(keybuff[i] == 0x00)//É¨Ãè8´Î£¬8Î»¶¼Îª0
+  27   2                      {
+  28   3                              Keysta[i] = 0;//ËµÃ÷°´¼ü±»°´ÏÂ
+  29   3                              if(flagset)
+  30   3                              {
+  31   4                                      if(i == 1)
+  32   4                                      {
+  33   5                                              KeyDownTime[i] += 1;//°´¼ü°´ÏÂÊ±¼äÃ¿Ôö¼Ó1ms£¬KeyDownTime¾Í+1
+  34   5                                      }
+  35   4                              }
+  36   3                      }
+  37   2                      else
+  38   2                      {}
+  39   2              }
+  40   1      }
+  41          void KeyDriver()
+  42          {
+  43   1              u8 i;
+  44   1              static u8 backup[4] = {1,1,1,1};//´æ´¢ÊýÂë¹ÜÉÏÒ»´ÎµÄ×´Ì¬£¬×¢ÒâÒª¶¨ÒåÎª¾²Ì¬±äÁ¿£¬ÒòÎª×´Ì¬ÖµÃ¿Ò»´Î°´¼ü°´ÏÂ¶
+             -¼ÐèÒª¸üÐÂ
+  45   1              static u16 TimeMax[4] = {800, 800, 800, 800};//×¢ÒâÕâÀïÒª¶¨ÒåÎªu16£¬²»È»¾ÍÒç³öÁË!!!!!!
+  46   1              for(i = 0;i<4;i++)
+  47   1              {
+  48   2                      if(Keysta[i] != backup[i])//±íÃ÷°´¼ü×´Ì¬·¢Éú¸Ä±ä
+  49   2                      {
+  50   3                              if(backup[i] == 1)//Èç¹ûÉÏÒ»´ÎµÄ×´Ì¬Îª1£¬ËµÃ÷µ±Ç°×´Ì¬Îª0£¨Îª0¾Í±íÊ¾°´¼ü±»°´ÏÂ£©
+  51   3                              {
+  52   4                                      KeyAction(KeyCodeMap[i]);//Ö´ÐÐÏàÓ¦°´¼üµÄ¹¦ÄÜ
+  53   4                              }
+C51 COMPILER V9.52.0.0   KEY                                                               04/09/2019 15:02:48 PAGE 2   
+
+  54   3                              backup[i] = Keysta[i];//¸üÐÂ°´¼ü×´Ì¬
+  55   3                      }
+  56   2                      if(KeyDownTime[i] > 0)//°´¼ü°´ÏÂÊ±¼ä´óÓÚ2ms
+  57   2                      {
+  58   3                              if(KeyDownTime[i] > TimeMax[i])//°´¼ü°´ÏÂÊ±¼ä´óÓÚ×î´ó°´¼üÊ±¼ä(800ms)£¬ËµÃ÷´¦ÓÚ³¤°´×´Ì¬
+  59   3                              {
+  60   4                                      KeyAction(KeyCodeMap[i]);//Ö´ÐÐÏàÓ¦°´¼üµÄ¹¦ÄÜ
+  61   4                                      TimeMax[i] += 100;//Ôö¼Ó³¤°´¼üÅÐ¶ÏÊ±¼ä
+  62   4                              }
+  63   3                      }
+  64   2                      else//Òª¼ÓÔÚifÑ­»·Íâ,¿¼ÂÇµ½KeyDownTime[i]<=0£¨°´¼üÎ´°´ÏÂ£©µÄÇé¿ö
+  65   2                      {
+  66   3                              TimeMax[i] = 800;
+  67   3                      }
+  68   2              }
+  69   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    250    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     32       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

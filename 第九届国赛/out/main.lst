@@ -1,0 +1,377 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN ..\out\main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\main.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\main.lst) OBJECT(..\ou
+                    -t\main.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "led.h"
+   3          #include "key.h"
+   4          #include "e2prom.h"
+   5          #include "pcf8591.h"
+   6          #include "ds18b20.h"
+   7          
+   8          u8 T1RH;
+   9          u8 T1RL;
+  10          u8 val = 0;
+  11          u8 setval = 1;
+  12          int temp = 0;
+  13          u8 tempH;//存储温度数据的前两位数据
+  14          u8 tempL;//存储温度数据的后两位数据
+  15          u8 cntH;//存储频率数据的高三位数据
+  16          u8 cntL;//存储频率数据的后两位数据
+  17          u8 flag200ms = 0;
+  18          u8 flag1s = 0;
+  19          u32 cnt = 0;//记录脉冲个数
+  20          u8 flagShow = 0;//0-温度，1-电压，2-频率
+  21          u8 flagShowSave = 0;//0-非回显，1-回显
+  22          u8 flagset = 0;//0-数据显示，1-设置
+  23          u8 flagLedBlink = 0;//0-灭，1-亮
+  24          
+  25          void CloseOther();
+  26          void CloseLED();
+  27          void ConfigTimer1(u16 ms);
+  28          void ConfigTimer0();
+  29          void RefreshVal();
+  30          void RefreshTemp();
+  31          void RefreshFr();
+  32          void RefreshSetVal();
+  33          void RefreshSaveData();
+  34          void SaveData();
+  35          void ReadData();
+  36          void LedBlink();
+  37          
+  38          void main()
+  39          {
+  40   1              ReadData();
+  41   1              EA = 1;
+  42   1              CloseOther();
+  43   1              CloseLED();
+  44   1              ConfigTimer1(1);
+  45   1              ConfigTimer0();
+  46   1              Start18B20();
+  47   1              
+  48   1              while(1)
+  49   1              {
+  50   2                      KeyDriver();
+  51   2                      if(flag200ms)
+  52   2                      {
+  53   3                              flag200ms = 0;
+  54   3                              if(flagset == 0)
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 2   
+
+  55   3                              {
+  56   4                                      if(flagShow == 0)
+  57   4                                      {
+  58   5                                              RefreshTemp();
+  59   5                                      }
+  60   4                                      else if(flagShow == 1)
+  61   4                                      {
+  62   5                                              RefreshVal();
+  63   5                                              if(val > setval)
+  64   5                                              {
+  65   6                                                      LedBlink();
+  66   6                                              }
+  67   5                                      }
+  68   4                                      else
+  69   4                                      {
+  70   5                                              if(flag1s)
+  71   5                                              {
+  72   6                                                      flag1s = 0;
+  73   6                                                      RefreshFr();
+  74   6                                                      cnt = 0;
+  75   6                                              }
+  76   5                                      }
+  77   4                              }
+  78   3                              else
+  79   3                              {
+  80   4                                      RefreshSetVal();
+  81   4                              }
+  82   3                      }
+  83   2              }
+  84   1      }
+  85          
+  86          void CloseOther()
+  87          {
+  88   1              P2 = (P2 & 0x1F) | 0xA0;
+  89   1              P0 = 0xAF;
+  90   1              P2 &= 0x1F;
+  91   1      }
+  92          
+  93          void CloseLED()
+  94          {
+  95   1              P2 = (P2 & 0x1F) | 0x80;
+  96   1              P0 = 0xFF;
+  97   1              P2 &= 0x1F;
+  98   1      }
+  99          
+ 100          void ConfigTimer0()
+ 101          {
+ 102   1              TH0 = 0xFF;
+ 103   1              TL0 = 0xFF;
+ 104   1              TMOD &= 0xF0;
+ 105   1              TMOD |= 0x04;
+ 106   1              ET0 = 1;
+ 107   1              TR0 = 1;
+ 108   1      }
+ 109          
+ 110          void InterruptTimer0()interrupt 1
+ 111          {
+ 112   1              cnt++;
+ 113   1      }
+ 114          
+ 115          void ConfigTimer1(u16 ms)
+ 116          {
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 3   
+
+ 117   1              u32 tmp;
+ 118   1              tmp = 11059200 / 12;
+ 119   1              tmp = (tmp * ms) / 1000;
+ 120   1              tmp = 65536 - tmp;
+ 121   1              T1RH = (u8)(tmp >> 8);
+ 122   1              T1RL = (u8)tmp;
+ 123   1              TMOD &= 0x0F;
+ 124   1              TMOD |= 0x10;
+ 125   1              TH1 = T1RH;
+ 126   1              TL1 = T1RL;
+ 127   1              ET1 = 1;
+ 128   1              TR1 = 1;
+ 129   1      }
+ 130          
+ 131          void InterruptTimer1() interrupt 3
+ 132          {
+ 133   1              static u8 tmr200ms = 0;
+ 134   1              static u32 tmr1s = 0;
+ 135   1              TH1 = T1RH;
+ 136   1              TL1 = T1RL;
+ 137   1              tmr200ms++;
+ 138   1              tmr1s++;
+ 139   1              LedScan();
+ 140   1              KeyScan();
+ 141   1              if(tmr200ms >= 200)
+ 142   1              {
+ 143   2                      tmr200ms = 0;
+ 144   2                      flag200ms = 1;
+ 145   2                      flagLedBlink ^= 1;
+ 146   2              }
+ 147   1              if(tmr1s >= 1000)
+ 148   1              {
+ 149   2                      tmr1s = 0;
+ 150   2                      flag1s = 1;     
+ 151   2              }
+ 152   1      }
+ 153          
+ 154          void KeyAction(u8 keycode)
+ 155          {
+ 156   1              if(keycode == '4')
+ 157   1              {
+ 158   2                      if(flagShow < 2)
+ 159   2                      {
+ 160   3                              flagShow += 1;
+ 161   3                      }
+ 162   2                      else if(flagShow >= 2)
+ 163   2                      {
+ 164   3                              flagShow = 0;
+ 165   3                      }
+ 166   2              }
+ 167   1              else if(keycode == '3')
+ 168   1              {
+ 169   2                      SaveData();
+ 170   2              }
+ 171   1              else if(keycode == '2')
+ 172   1              {
+ 173   2                      if(flagset == 0)
+ 174   2                      {
+ 175   3                              ReadData();
+ 176   3                              flagShowSave = 1;
+ 177   3                      }
+ 178   2                      else
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 4   
+
+ 179   2                      {
+ 180   3                              setval++;
+ 181   3                              E2Write(&setval,0x05,1);
+ 182   3                      }
+ 183   2              }
+ 184   1              else if(keycode == '1')
+ 185   1              {
+ 186   2                      if(flagset == 0)
+ 187   2                      {
+ 188   3                              flagset = 1;
+ 189   3                      }
+ 190   2                      else if(flagset == 1)
+ 191   2                      {
+ 192   3                              flagset = 0;
+ 193   3                              flagShowSave = 0;
+ 194   3                      }
+ 195   2              }
+ 196   1      }
+ 197          
+ 198          void RefreshVal()
+ 199          {
+ 200   1              u8 i;
+ 201   1              
+ 202   1              for(i = 7; i>1;i--)
+ 203   1              {
+ 204   2                      LedBuff[i] = 0xFF;
+ 205   2              }
+ 206   1              if(flagShowSave == 0)
+ 207   1              {
+ 208   2                      P2 = (P2 & 0x1F) | 0x80;
+ 209   2                      P0 = 0xFB;
+ 210   2                      P2 &= 0x1F;
+ 211   2                      val = GetADCValue(3);
+ 212   2                      LedBuff[6] = 0xFF;
+ 213   2                      LedBuff[7] &= 0xC1;
+ 214   2              }
+ 215   1              else
+ 216   1              {
+ 217   2                      CloseLED();
+ 218   2                      LedBuff[6] &= 0xC1;
+ 219   2                      LedBuff[7] &= 0x89;
+ 220   2              }
+ 221   1              LedBuff[0] = LedChar[val % 10];
+ 222   1              LedBuff[1] = LedChar[(val / 10) % 10];
+ 223   1              LedBuff[1] &= 0x7F;
+ 224   1              
+ 225   1      }
+ 226          
+ 227          void RefreshTemp()
+ 228          {
+ 229   1              u8 i;
+ 230   1      
+ 231   1              tempL = temp % 100;
+ 232   1              tempH = temp / 100;
+ 233   1              Start18B20();
+ 234   1              for(i = 7; i>3; i--)
+ 235   1              {
+ 236   2                      LedBuff[i] = 0xFF;
+ 237   2              }
+ 238   1              if(flagShowSave == 0)
+ 239   1              {
+ 240   2                      P2 = (P2 & 0x1F) | 0x80;
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 5   
+
+ 241   2                      P0 = 0xFE;
+ 242   2                      P2 &= 0x1F;
+ 243   2                      Get18B20Temp(&temp);
+ 244   2                      LedBuff[7] &= LedChar[12];
+ 245   2                      LedBuff[6] = 0xFF;
+ 246   2              }
+ 247   1              else
+ 248   1              {
+ 249   2                      CloseLED();
+ 250   2                      LedBuff[7] &= 0x89;
+ 251   2                      LedBuff[6] &= LedChar[12];
+ 252   2              }
+ 253   1              LedBuff[0] = LedChar[tempL % 10];
+ 254   1              LedBuff[1] = LedChar[(tempL / 10) % 10];
+ 255   1              LedBuff[2] = LedChar[tempH % 10];
+ 256   1              LedBuff[3] = LedChar[(tempH / 10) % 10];
+ 257   1              
+ 258   1              LedBuff[2] &= 0x7F;
+ 259   1      }
+ 260          
+ 261          void RefreshFr()
+ 262          {
+ 263   1              cntL = cnt % 100;
+ 264   1              cntH = cnt / 100;
+ 265   1              if(flagShowSave == 0)
+ 266   1              {
+ 267   2                      P2 = (P2 & 0x1F) | 0x80;
+ 268   2                      P0 = 0xFD;
+ 269   2                      P2 &= 0x1F;
+ 270   2                      ShowNumber(cnt);
+ 271   2                      LedBuff[7] = LedChar[15];
+ 272   2              }
+ 273   1              else
+ 274   1              {
+ 275   2                      CloseLED();
+ 276   2                      E2Read(&cntL,0x03,1);
+ 277   2                      E2Read(&cntH,0x04,1);
+ 278   2                      cnt = cntL + (cntH*100);
+ 279   2                      ShowNumber(cnt);
+ 280   2                      LedBuff[6] &= LedChar[15];
+ 281   2                      LedBuff[7] &= 0x89;
+ 282   2              }
+ 283   1      }
+ 284          
+ 285          void RefreshSetVal()
+ 286          {
+ 287   1              u8 i;
+ 288   1              
+ 289   1              for(i = 7; i>1; i--)
+ 290   1              {
+ 291   2                      LedBuff[i] = 0xFF;
+ 292   2              }
+ 293   1              if(setval > 50)
+ 294   1              {
+ 295   2                      setval = 1;
+ 296   2              }
+ 297   1              LedBuff[0] = LedChar[(setval % 10)];
+ 298   1              LedBuff[1] = LedChar[(setval / 10) % 10];
+ 299   1              LedBuff[1] &= 0x7F;
+ 300   1              LedBuff[7] &= 0x8C;
+ 301   1      }
+ 302          
+C51 COMPILER V9.52.0.0   MAIN                                                              04/09/2019 15:02:48 PAGE 6   
+
+ 303          void SaveData()
+ 304          {
+ 305   1              E2Write(&val,0x00,1);
+ 306   1              E2Write(&tempL, 0x01, 1);
+ 307   1              E2Write(&tempH, 0x02, 1);
+ 308   1              E2Write(&cntL,0x03,1);
+ 309   1              E2Write(&cntH,0x04,1);
+ 310   1      }
+ 311          
+ 312          void ReadData()
+ 313          {
+ 314   1              E2Read(&val,0x00,1);
+ 315   1              E2Read(&tempL, 0x01, 1);
+ 316   1              E2Read(&tempH, 0x02, 1);
+ 317   1              E2Read(&cntL,0x03,1);
+ 318   1              E2Read(&cntH,0x04,1);
+ 319   1              E2Read(&setval,0x05,1);
+ 320   1      }
+ 321          
+ 322          void LedBlink()
+ 323          {
+ 324   1              if(flagShowSave == 0)
+ 325   1              {
+ 326   2                      P2 = (P2 & 0x1F) | 0x80;
+ 327   2                      if(flagLedBlink == 0)
+ 328   2                      {
+ 329   3                              P0 = 0xFB;
+ 330   3                      }
+ 331   2                      else
+ 332   2                      {
+ 333   3                              P2 = (P2 & 0x1F) | 0x80;
+ 334   3                              P0 = 0x7B;
+ 335   3                              P2 &= 0x1F;
+ 336   3                      }
+ 337   2                      P2 &= 0xFF; 
+ 338   2              }
+ 339   1              else
+ 340   1              {
+ 341   2                      CloseLED();
+ 342   2              }
+ 343   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1147    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     25       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

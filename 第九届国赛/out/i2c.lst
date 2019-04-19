@@ -1,0 +1,160 @@
+C51 COMPILER V9.52.0.0   I2C                                                               04/09/2019 15:02:47 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE I2C
+OBJECT MODULE PLACED IN ..\out\i2c.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE ..\src\i2c.c BROWSE DEBUG OBJECTEXTEND PRINT(..\out\i2c.lst) OBJECT(..\out\
+                    -i2c.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include <intrins.h>
+   3          
+   4          #define I2CDelay()Delay5us()
+   5          
+   6          void Delay5us()         //@11.0592MHz
+   7          {
+   8   1              unsigned char i;
+   9   1      
+  10   1              _nop_();
+  11   1              i = 11;
+  12   1              while (--i);
+  13   1      }
+  14          
+  15          void I2CStart()
+  16          {
+  17   1              I2C_SCL = 1;
+  18   1              I2C_SDA = 1;
+  19   1              I2CDelay();
+  20   1              I2C_SDA = 0;
+  21   1              I2CDelay();
+  22   1              I2C_SCL = 0;
+  23   1              I2CDelay();
+  24   1      }
+  25          
+  26          void I2CStop()
+  27          {
+  28   1              I2C_SCL = 0;
+  29   1              I2C_SDA = 0;
+  30   1              I2CDelay();
+  31   1              I2C_SCL = 1;
+  32   1              I2CDelay();
+  33   1              I2C_SDA = 1;
+  34   1              I2CDelay();
+  35   1      }
+  36          
+  37          bit I2CWrite(u8 dat)
+  38          {
+  39   1              bit ack;
+  40   1              u8 mask;
+  41   1              
+  42   1              for(mask = 0x80; mask != 0; mask >>= 1)
+  43   1              {
+  44   2                      if(mask & dat)
+  45   2                      {
+  46   3                              I2C_SDA = 1;
+  47   3                      }
+  48   2                      else
+  49   2                      {
+  50   3                              I2C_SDA = 0;
+  51   3                      }
+  52   2                      I2CDelay();
+  53   2                      I2C_SCL = 1;
+  54   2                      I2CDelay();
+C51 COMPILER V9.52.0.0   I2C                                                               04/09/2019 15:02:47 PAGE 2   
+
+  55   2                      I2C_SCL = 0;
+  56   2                      I2CDelay();
+  57   2              }
+  58   1              I2C_SDA = 1;
+  59   1              I2CDelay();
+  60   1              I2C_SCL = 1;
+  61   1              ack = I2C_SDA;
+  62   1              I2CDelay();
+  63   1              I2C_SCL = 0;
+  64   1              
+  65   1              return ~ack;
+  66   1      }
+  67          
+  68          u8 I2CReadACK()
+  69          {
+  70   1              u8 dat;
+  71   1              u8 mask;
+  72   1              
+  73   1              I2C_SDA = 1;
+  74   1              I2CDelay();
+  75   1              for(mask = 0x80; mask != 0; mask >>= 1)
+  76   1              {
+  77   2                      I2C_SCL = 1;
+  78   2                      I2CDelay();
+  79   2                      if(I2C_SDA)
+  80   2                      {
+  81   3                              dat |= mask;
+  82   3                      }
+  83   2                      else
+  84   2                      {
+  85   3                              dat &= ~mask;
+  86   3                      }
+  87   2                      I2CDelay();
+  88   2                      I2C_SCL =0;
+  89   2                      I2CDelay();
+  90   2              }
+  91   1              I2C_SDA = 0;
+  92   1              I2CDelay();
+  93   1              I2C_SCL = 1;
+  94   1              I2CDelay();
+  95   1              I2C_SCL = 0;
+  96   1              I2CDelay();
+  97   1              
+  98   1              return dat;
+  99   1      }
+ 100          
+ 101          u8 I2CReadNAK()
+ 102          {
+ 103   1              u8 dat;
+ 104   1              u8 mask;
+ 105   1              
+ 106   1              I2C_SDA = 1;
+ 107   1              I2CDelay();
+ 108   1              for(mask = 0x80; mask != 0; mask >>= 1)
+ 109   1              {
+ 110   2                      I2C_SCL = 1;
+ 111   2                      I2CDelay();
+ 112   2                      if(I2C_SDA)
+ 113   2                      {
+ 114   3                              dat |= mask;
+ 115   3                      }
+ 116   2                      else
+C51 COMPILER V9.52.0.0   I2C                                                               04/09/2019 15:02:47 PAGE 3   
+
+ 117   2                      {
+ 118   3                              dat &= ~mask;
+ 119   3                      }
+ 120   2                      I2CDelay();
+ 121   2                      I2C_SCL =0;
+ 122   2                      I2CDelay();
+ 123   2              }
+ 124   1              I2C_SDA = 1;
+ 125   1              I2CDelay();
+ 126   1              I2C_SCL = 1;
+ 127   1              I2CDelay();
+ 128   1              I2C_SCL = 0;
+ 129   1              I2CDelay();
+ 130   1              
+ 131   1              return dat;
+ 132   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    181    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

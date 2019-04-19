@@ -1,0 +1,9 @@
+"..\out\ds18b20.obj",
+"..\out\e2prom.obj",
+"..\out\i2c.obj",
+"..\out\key.obj",
+"..\out\led.obj",
+"..\out\main.obj",
+"..\out\pcf8591.obj" 
+TO "..\out\main" 
+PRINT("..\out\main.m51") RAMSIZE(256) 
